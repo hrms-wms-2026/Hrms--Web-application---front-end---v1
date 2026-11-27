@@ -69,10 +69,12 @@
       }
 
       @if (filtered().length === 0) {
-        <p class="py-3 text-sm text-[var(--color-text-secondary)]" data-testid="action-center-all-clear">
-          <span class="text-[var(--color-widget-shade-1)]" aria-hidden="true">✓</span>
-          {{ filter() === 'all' ? "You're all caught up" : 'Nothing here right now' }}
-        </p>
+        <app-widget-empty
+          data-testid="action-center-all-clear"
+          illustration="inbox"
+          [heading]="filter() === 'all' ? &quot;You're all caught up&quot; : 'Nothing here right now'"
+          [description]="filter() === 'all' ? 'No pending approvals, alerts, or overdue items.' : 'New items will show up here.'"
+        />
       } @else {
         <ul class="divide-y divide-[var(--color-widget-mild-line)]/70" data-testid="action-center-inbox">
           @for (item of visibleRows(); track item.key) {

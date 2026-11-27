@@ -29,7 +29,7 @@
     <div class="relative z-10 flex flex-col gap-4">
     <!-- Status tiles: what I'm doing + how long, and how long is left -->
     <div class="relative z-10 grid grid-cols-1 gap-3 @lg:gap-4 @2xl:grid-cols-[1.65fr_1fr]">
-      <div class="flex items-center gap-3 rounded-2xl border border-[var(--color-accent-subtle)] bg-[var(--color-surface)]/85 p-3 dark:border-[var(--color-border)] shadow-xs backdrop-blur-xs @lg:gap-3 @lg:p-4 @xl:gap-4 @xl:p-5">
+      <div class="glance-tile flex items-center gap-3 rounded-2xl p-3 backdrop-blur-xs @lg:gap-3 @lg:p-4 @xl:gap-4 @xl:p-5">
         <div class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-subtle)] text-[var(--color-accent)] @lg:h-12 @lg:w-12 @xl:h-16 @xl:w-16">
           <svg class="h-6 w-6 @xl:h-8 @xl:w-8" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M5 5.5A1.5 1.5 0 016.5 4h11A1.5 1.5 0 0119 5.5V15H5V5.5zM7 6v7h10V6H7zM2.5 16.5h19a.5.5 0 01.5.5 2 2 0 01-2 2H4a2 2 0 01-2-2 .5.5 0 01.5-.5z"></path>
@@ -52,7 +52,7 @@
         </div>
       </div>
 
-      <div class="flex items-center gap-3 rounded-2xl border border-[var(--color-widget-mild-line)] bg-[var(--color-widget-mild)]/70 p-3 dark:border-[var(--color-border)] dark:bg-[var(--color-surface)]/85 shadow-xs backdrop-blur-xs @lg:gap-3 @lg:p-4 @xl:gap-4 @xl:p-5">
+      <div class="glance-tile flex items-center gap-3 rounded-2xl p-3 backdrop-blur-xs @lg:gap-3 @lg:p-4 @xl:gap-4 @xl:p-5">
         <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-subtle)] text-[var(--color-accent)] @lg:h-12 @lg:w-12 @xl:h-16 @xl:w-16">
           <svg class="h-6 w-6 @xl:h-8 @xl:w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="12" r="9" stroke-width="2"></circle>
@@ -73,7 +73,7 @@
     </div>
 
     <!-- Today's Activity: the shift as a bar, worked time coloured by kind, the rest still to come -->
-    <div class="relative z-10 rounded-2xl border border-[var(--color-border)]/70 bg-[var(--color-surface)]/85 p-3 shadow-xs backdrop-blur-xs @lg:p-5 @xl:px-6">
+    <div class="glance-tile relative z-10 rounded-2xl p-3 backdrop-blur-xs @lg:p-5 @xl:px-6">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <span class="inline-flex items-center gap-2 text-sm font-bold text-[var(--color-text-primary)] @lg:gap-3 @lg:text-lg @xl:text-xl">
           <svg class="h-4 w-4 text-[var(--color-accent)] @lg:h-6 @lg:w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">

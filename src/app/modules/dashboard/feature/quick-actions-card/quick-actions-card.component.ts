@@ -11,6 +11,7 @@ import {
   inject,
   input,
   output,
+  signal,
   untracked,
   viewChild
 } from '@angular/core';
@@ -19,6 +20,7 @@ import { PermissionService } from '../../../../core/auth/state/permission.servic
 import { canAccessNavItem } from '../../../../layouts/main-layout/nav/nav-access';
 import { NAV_ITEMS } from '../../../../layouts/main-layout/nav/nav-items.config';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
+import { NewLeaveRequestHostComponent } from '../../../leave/ui/new-leave-request-host/new-leave-request-host.component';
 import { PinnedSize } from '../../ui/dashboard-grid/dashboard-grid.component';
 
 /** Icon tint of a tile (the CSS maps each tone to its accent colour). */
@@ -48,10 +50,7 @@ const ICONS = {
   team: [
     'M17 20h5v-2a3 3 0 00-5.36-1.86M17 20H7m10 0v-2c0-.66-.13-1.28-.36-1.86M7 20H2v-2a3 3 0 015.36-1.86M7 20v-2c0-.66.13-1.28.36-1.86m0 0a5 5 0 019.28 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z'
   ],
-  settings: [
-    'M10.3 4.3c.4-1.7 3-1.7 3.4 0a1.7 1.7 0 002.6 1.1c1.5-.9 3.3.8 2.4 2.4a1.7 1.7 0 001 2.5c1.8.5 1.8 3 0 3.5a1.7 1.7 0 00-1 2.6c.9 1.5-.9 3.3-2.4 2.4a1.7 1.7 0 00-2.6 1c-.4 1.8-3 1.8-3.4 0a1.7 1.7 0 00-2.6-1c-1.5.9-3.3-.9-2.4-2.4a1.7 1.7 0 00-1-2.6c-1.8-.4-1.8-3 0-3.4a1.7 1.7 0 001-2.6c-.9-1.5.9-3.3 2.4-2.4a1.7 1.7 0 002.6-1.1z',
-    'M9 12a3 3 0 106 0 3 3 0 00-6 0z'
-  ]
+  timeOff: ['M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v6M3 6a2 2 0 012-2M3 6v13a2 2 0 002 2h7', 'M18 15v6M15 18h6']
 } as const;
 
 /**
@@ -62,7 +61,7 @@ const ICONS = {
 @Component({
   selector: 'app-quick-actions-card',
   standalone: true,
-  imports: [RouterLink, NgTemplateOutlet],
+  imports: [RouterLink, NgTemplateOutlet, NewLeaveRequestHostComponent],
   host: { class: 'block h-full' },
   templateUrl: './quick-actions-card.component.html',
   styleUrl: './quick-actions-card.component.css',
@@ -87,9 +86,12 @@ export class QuickActionsCardComponent implements OnInit {
   protected readonly actionLoading = this.store.actionLoading;
   protected readonly activeAction = this.store.activeAction;
 
-  /** Settings shows only to viewers who can open a settings page, by the same rule as the sidebar
-   * (nav-items.config). */
-  protected readonly canOpenSettings = computed(() => this.canOpen('settings'));
+  /** Request Time Off shows to viewers who can open Time Off, by the same rule as the sidebar (nav-items.config):
+   * the leave module is on and they can read their own leave. Unlike Settings, that is every ordinary employee. */
+  protected readonly canRequestTimeOff = computed(() => this.canOpen('time-off'));
+
+  /** The New Leave Request popup, opened from the tile in place. */
+  protected readonly leaveRequestOpen = signal(false);
 
   protected readonly onBreak = computed(() => this.today()?.canEndBreak ?? false);
   protected readonly breakDisabled = computed(() => {
@@ -103,7 +105,7 @@ export class QuickActionsCardComponent implements OnInit {
     () => this.actionLoading() && (this.activeAction() === 'startBreak' || this.activeAction() === 'endBreak')
   );
 
-  /** The tiles to show, in order: Break, the switch to the other dashboard, then Settings. */
+  /** The tiles to show, in order: Break, the switch to the other dashboard, then Request Time Off. */
   protected readonly actions = computed<QuickAction[]>(() => {
     const team = this.onTeamDashboard();
     const actions: QuickAction[] = [
@@ -121,8 +123,14 @@ export class QuickActionsCardComponent implements OnInit {
         ? { id: 'my-work', label: 'My Work', iconPaths: ICONS.home, tone: 'blue', route: '/dashboard' }
         : { id: 'my-team', label: 'My Team', iconPaths: ICONS.team, tone: 'blue', route: '/dashboard/my-team' }
     ];
-    if (this.canOpenSettings()) {
-      actions.push({ id: 'settings', label: 'Settings', iconPaths: ICONS.settings, tone: 'slate', route: '/settings' });
+    if (this.canRequestTimeOff()) {
+      actions.push({
+        id: 'time-off',
+        label: 'Time Off',
+        iconPaths: ICONS.timeOff,
+        tone: 'slate',
+        run: () => this.leaveRequestOpen.set(true)
+      });
     }
     return actions;
   });

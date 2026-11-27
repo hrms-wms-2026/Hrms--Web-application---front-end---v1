@@ -135,7 +135,7 @@
 app-position-template-drawer {
   flex-shrink: 0;
   width: 300px;
-  height: calc(100vh - 115px - var(--bottom-tray-offset, 0px));
+  height: calc(100vh - 127px - var(--bottom-tray-offset, 0px));
   align-self: stretch;
   border-left: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
   background: var(--color-surface);
@@ -151,8 +151,8 @@ app-position-template-drawer {
   background-color: var(--color-surface);
   border: none;
   box-shadow: none;
-  height: calc(100vh - 115px - var(--bottom-tray-offset, 0px));
-  min-height: calc(100vh - 115px - var(--bottom-tray-offset, 0px));
+  height: calc(100vh - 127px - var(--bottom-tray-offset, 0px));
+  min-height: calc(100vh - 127px - var(--bottom-tray-offset, 0px));
   /* Grid, panning, zoom and minimap come from app-pan-zoom-canvas (this element's host). */
 }
 

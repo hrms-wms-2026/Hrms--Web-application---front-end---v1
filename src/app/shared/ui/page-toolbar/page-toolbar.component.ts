@@ -81,9 +81,9 @@ import { PageToolbarService } from '../../state/page-toolbar.service';
       display: inline-flex;
       align-items: center;
       min-width: 0;
-      height: 28px;
-      /* Same shape and colours as the navbar's notification bell. */
-      border-radius: 8px;
+      height: var(--topbar-control-h, 28px);
+      /* Same shape and colours as the navbar's notification bell: a round chip that opens into a pill. */
+      border-radius: 999px;
       border: 1px solid transparent;
       transition:
         background-color var(--ptb-ms) var(--ptb-ease),
@@ -91,8 +91,11 @@ import { PageToolbarService } from '../../state/page-toolbar.service';
         padding var(--ptb-ms) var(--ptb-ease);
     }
     .ptb--open {
-      background: var(--color-surface-secondary);
-      padding-left: 3px;
+      background: var(--topbar-chip-bg, var(--color-surface-secondary));
+      border-color: var(--topbar-chip-border, transparent);
+      box-shadow: var(--topbar-chip-shadow, none);
+      padding-left: 4px;
+      padding-right: 3px;
     }
     /* Width animates from 0 to the content's natural width (grid track 0fr -> 1fr). */
     .ptb__tray {
@@ -154,9 +157,9 @@ import { PageToolbarService } from '../../state/page-toolbar.service';
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      height: 22px;
-      border-radius: 6px;
-      padding: 0 9px 0 7px;
+      height: calc(var(--topbar-control-h, 28px) - 10px);
+      border-radius: 999px;
+      padding: 0 10px 0 8px;
       font-size: 12px;
       font-weight: 600;
       color: var(--color-text-secondary);
@@ -183,12 +186,13 @@ import { PageToolbarService } from '../../state/page-toolbar.service';
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 28px;
-      height: 28px;
+      width: var(--topbar-control-h, 28px);
+      height: var(--topbar-control-h, 28px);
       flex: none;
-      border-radius: 8px;
-      border: 1px solid transparent;
-      background: var(--color-surface-secondary);
+      border-radius: 999px;
+      border: 1px solid var(--topbar-chip-border, transparent);
+      background: var(--topbar-chip-bg, var(--color-surface-secondary));
+      box-shadow: var(--topbar-chip-shadow, none);
       color: var(--color-text-secondary);
       cursor: pointer;
       transition:
@@ -202,13 +206,14 @@ import { PageToolbarService } from '../../state/page-toolbar.service';
       transform: scale(0.92);
     }
     .ptb--open .ptb__circle {
-      width: 24px;
-      height: 24px;
-      border-radius: 6px;
+      width: calc(var(--topbar-control-h, 28px) - 10px);
+      height: calc(var(--topbar-control-h, 28px) - 10px);
+      border-color: transparent;
       background: transparent;
+      box-shadow: none;
     }
     .ptb__circle:hover:not(:disabled) {
-      background: var(--color-border);
+      background: var(--topbar-chip-bg-hover, var(--color-border));
       color: var(--color-text-primary);
     }
     /* The pencil spins out as the X spins in (and back). */

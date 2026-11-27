@@ -33,7 +33,7 @@ import {
         (click)="toggle()"
         data-testid="notification-bell"
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
           <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
         </svg>
@@ -63,22 +63,25 @@ import {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 28px;
-      height: 28px;
-      border-radius: 8px;
-      border: 1px solid transparent;
-      background: var(--color-surface-secondary);
+      /* A round chip matched to the rest of the floating top bar (sizes and colours from top-navbar). */
+      width: var(--topbar-control-h, 28px);
+      height: var(--topbar-control-h, 28px);
+      border-radius: 999px;
+      border: 1px solid var(--topbar-chip-border, transparent);
+      background: var(--topbar-chip-bg, var(--color-surface-secondary));
+      box-shadow: var(--topbar-chip-shadow, none);
       color: var(--color-text-secondary);
       cursor: pointer;
+      transition: background-color 150ms ease, color 150ms ease;
     }
     .notification-bell__btn:hover {
-      background: var(--color-border);
+      background: var(--topbar-chip-bg-hover, var(--color-border));
       color: var(--color-text-primary);
     }
     .notification-bell__badge {
       position: absolute;
-      top: 2px;
-      right: 2px;
+      top: 4px;
+      right: 4px;
       min-width: 14px;
       height: 14px;
       padding: 0 3px;

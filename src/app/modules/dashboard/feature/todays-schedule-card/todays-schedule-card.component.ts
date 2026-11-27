@@ -1,3 +1,4 @@
+import { WidgetEmptyComponent } from '../../../../shared/ui/widget-empty/widget-empty.component';
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
@@ -66,7 +67,7 @@ type TimelineRow = TimelineRowBase & (
 @Component({
   selector: 'app-todays-schedule-card',
   standalone: true,
-  imports: [NgTemplateOutlet, RouterLink, KeyboardClickDirective, StopClickPropagationDirective,MeetingOccurrenceDrawerComponent, PopoutHeaderActionsComponent, TaskFormModalComponent],
+  imports: [WidgetEmptyComponent, NgTemplateOutlet, RouterLink, KeyboardClickDirective, StopClickPropagationDirective,MeetingOccurrenceDrawerComponent, PopoutHeaderActionsComponent, TaskFormModalComponent],
   // A size container: the row layout follows the card's own width (Small / Large on the grid).
   host: { class: '@container block' },
   templateUrl: './todays-schedule-card.component.html',
