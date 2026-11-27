@@ -34,6 +34,10 @@ export interface ProjectListItemDto {
   systemPurpose?: string | null;
   /** "lucide:{name}" or "emoji:{emoji}"; null shows the logo or initials. */
   icon?: string | null;
+  /** The caller's own tasks here: estimated hours of all of them, of the still-open ones, and the open count. */
+  myAllocatedHours?: number;
+  myOpenHours?: number;
+  myOpenTaskCount?: number;
 }
 
 export interface PagedResultDto<T> {

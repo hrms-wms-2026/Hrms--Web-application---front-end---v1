@@ -12,8 +12,24 @@ import { widgetInkOn, widgetShadeFor } from '../../../../shared/utils/widget-pal
 const PROJECT_PAGE_SIZE = 100;
 const PREVIEW_COUNT = 4;
 
-/** Small card: how many of my projects are still running, with the first few and how far along
- * they are. Progress is completed / allocated hours - the project list carries no task counts. */
+/** Hours as "12.5h" - one decimal, never NaN. */
+function formatHours(value: number | undefined): string {
+  const safe = value !== undefined && Number.isFinite(value) ? value : 0;
+  return `${Math.round(safe * 10) / 10}h`;
+}
+
+/** Where to focus first: the most open task hours assigned to me, then the most allocated to me, then by name.
+ * Projects where I have no tasks (e.g. the auto-created Office project) sink to the bottom. */
+function byFocus(a: ProjectListItemDto, b: ProjectListItemDto): number {
+  return (
+    (b.myOpenHours ?? 0) - (a.myOpenHours ?? 0) ||
+    (b.myAllocatedHours ?? 0) - (a.myAllocatedHours ?? 0) ||
+    a.name.localeCompare(b.name)
+  );
+}
+
+/** Small card: the projects I'm working on, ordered by how many open task hours I have in each, so the one to
+ * focus on is on top. Each row shows my own task hours there and how much of it I've finished. */
 @Component({
   selector: 'app-active-projects-card',
   standalone: true,
@@ -33,7 +49,12 @@ export class ActiveProjectsCardComponent implements OnInit {
   protected readonly refreshing = signal(false);
   private readonly projects = signal<ProjectListItemDto[]>([]);
 
-  protected readonly active = computed(() => this.projects().filter((p) => p.isActive && !p.isAchieved));
+  protected readonly active = computed(() => this.projects().filter((p) => p.isActive && !p.isAchieved).sort(byFocus));
+  /** The top row gets a "Focus" chip, but only when it really has open work for me. */
+  protected readonly focusId = computed(() => {
+    const top = this.active()[0] as ProjectListItemDto | undefined;
+    return top && (top.myOpenHours ?? 0) > 0 ? top.id : null;
+  });
   protected readonly preview = computed(() => this.active().slice(0, PREVIEW_COUNT));
   protected readonly moreCount = computed(() => Math.max(0, this.active().length - PREVIEW_COUNT));
 
@@ -91,13 +112,24 @@ export class ActiveProjectsCardComponent implements OnInit {
     return widgetInkOn(this.color(project));
   }
 
-  protected hoursLabel(project: ProjectListItemDto): string {
-    const hours = (value: number): string => `${Math.round((Number.isFinite(value) ? value : 0) * 10) / 10}h`;
-    return `${hours(project.completedHours)} / ${hours(project.allocatedHours)}`;
+  /** "8h open · 3 tasks", or a plain note when nothing of mine is open here. */
+  protected tasksLabel(project: ProjectListItemDto): string {
+    const open = project.myOpenTaskCount ?? 0;
+    if ((project.myAllocatedHours ?? 0) <= 0 && open === 0) return 'No tasks assigned to you';
+    if (open === 0) return 'All your tasks done';
+    return `${formatHours(project.myOpenHours)} open · ${open} ${open === 1 ? 'task' : 'tasks'}`;
   }
 
+  /** My allocated task hours in this project - the figure the list is ranked by. */
+  protected allocatedLabel(project: ProjectListItemDto): string {
+    return formatHours(project.myAllocatedHours);
+  }
+
+  /** Share of my allocated task hours already finished (allocated minus open). */
   protected progress(project: ProjectListItemDto): number {
-    if (!(project.allocatedHours > 0) || !Number.isFinite(project.completedHours)) return 0;
-    return Math.min(100, Math.round((project.completedHours / project.allocatedHours) * 100));
+    const allocated = project.myAllocatedHours ?? 0;
+    const open = project.myOpenHours ?? 0;
+    if (!(allocated > 0) || !Number.isFinite(open)) return 0;
+    return Math.max(0, Math.min(100, Math.round(((allocated - open) / allocated) * 100)));
   }
 }
