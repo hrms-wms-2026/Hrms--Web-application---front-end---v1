@@ -6,6 +6,7 @@ import { StopClickPropagationDirective } from '../../../../shared/directives/sto
 import { IconComponent } from '../../../../shared/ui/icon/icon.component';
 import { KpiTilesComponent } from '../../../../shared/ui/kpi-tiles/kpi-tiles.component';
 import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
+import { WidgetEmptyComponent } from '../../../../shared/ui/widget-empty/widget-empty.component';
 import { WidgetCardComponent, WidgetState } from '../../../../shared/ui/widget-card/widget-card.component';
 import { WeeklyWorkProgressApiService } from '../../data-access/weekly-work-progress-api.service';
 import { WeekProgress, WeeklyWorkProgressResponse } from '../../models/weekly-work-progress.model';
@@ -45,6 +46,7 @@ import { WeeklyWorkProgressDetailDialogComponent } from '../weekly-work-progress
   selector: 'app-weekly-progress-card',
   standalone: true,
   imports: [
+    WidgetEmptyComponent,
     NgTemplateOutlet,
     DashboardDonutComponent,
     IconComponent,

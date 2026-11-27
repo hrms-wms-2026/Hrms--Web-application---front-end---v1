@@ -1,11 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { signal } from '@angular/core';
+import { Component, output, signal } from '@angular/core';
 import { describe, expect, it, vi } from 'vitest';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { AttendanceTodayResponse } from '../../../attendance/models/time-tracking.model';
+import { NewLeaveRequestHostComponent } from '../../../leave/ui/new-leave-request-host/new-leave-request-host.component';
 import { QuickActionsCardComponent } from './quick-actions-card.component';
+
+/** Stands in for the leave request popup, which would load the real leave stores over HTTP. */
+@Component({ selector: 'app-new-leave-request-host', standalone: true, template: '' })
+class LeaveRequestHostStub {
+  readonly closed = output<void>();
+}
 
 function makeToday(overrides: Partial<AttendanceTodayResponse> = {}): AttendanceTodayResponse {
   return {
@@ -52,7 +59,12 @@ describe('QuickActionsCardComponent', () => {
         { provide: TimeTrackingStore, useValue: storeStub },
         { provide: PermissionService, useValue: { hasAnyModule: () => canAccess, hasAnyPermission: () => canAccess } }
       ]
-    }).compileComponents();
+    })
+      .overrideComponent(QuickActionsCardComponent, {
+        remove: { imports: [NewLeaveRequestHostComponent] },
+        add: { imports: [LeaveRequestHostStub] }
+      })
+      .compileComponents();
 
     const fixture = TestBed.createComponent(QuickActionsCardComponent);
     fixture.componentRef.setInput('onTeamDashboard', onTeamDashboard);
@@ -63,8 +75,8 @@ describe('QuickActionsCardComponent', () => {
   it('builds one tile per action, in order, on My Team', async () => {
     const { fixture } = await setup(makeToday(), true);
     const ids = Array.from(fixture.nativeElement.querySelectorAll('.qa-btn')).map((el) => (el as HTMLElement).dataset['testid']);
-    expect(ids).toEqual(['quick-action-break', 'quick-action-my-work', 'quick-action-settings']);
-    expect(fixture.nativeElement.querySelector('[data-testid="quick-action-settings"]').getAttribute('data-tone')).toBe('slate');
+    expect(ids).toEqual(['quick-action-break', 'quick-action-my-work', 'quick-action-time-off']);
+    expect(fixture.nativeElement.querySelector('[data-testid="quick-action-time-off"]').getAttribute('data-tone')).toBe('slate');
   });
 
   it('shows a busy, disabled break tile while a break action runs', async () => {
@@ -123,19 +135,24 @@ describe('QuickActionsCardComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="quick-action-break"]')).toBeTruthy();
   });
 
-  it('shows Start Break, My Team and Settings on My Work', async () => {
+  it('shows Start Break, My Team and Request Time Off on My Work', async () => {
     const { fixture } = await setup(makeToday());
     const ids = Array.from(fixture.nativeElement.querySelectorAll('[data-testid^="quick-action-"]'))
       .map((el) => (el as HTMLElement).dataset['testid'])
       .filter((id) => !id?.endsWith('-label'));
-    expect(ids).toEqual(['quick-action-break', 'quick-action-my-team', 'quick-action-settings']);
+    expect(ids).toEqual(['quick-action-break', 'quick-action-my-team', 'quick-action-time-off']);
   });
 
-  it('links Settings to settings, and hides it from a viewer who cannot open any settings page', async () => {
-    const allowed = await setup(makeToday(), true);
-    expect(allowed.fixture.nativeElement.querySelector('[data-testid="quick-action-settings"]').getAttribute('href')).toBe('/settings');
+  it('opens the leave request popup from Request Time Off, and hides the tile from a viewer who cannot open Time Off', async () => {
+    const allowed = await setup(makeToday());
+    const el: HTMLElement = allowed.fixture.nativeElement;
+    expect(el.querySelector('[data-testid="quick-action-time-off-label"]')?.textContent?.trim()).toBe('Time Off');
+    expect(el.querySelector('app-new-leave-request-host')).toBeNull();
+    (el.querySelector('[data-testid="quick-action-time-off"]') as HTMLButtonElement).click();
+    allowed.fixture.detectChanges();
+    expect(el.querySelector('app-new-leave-request-host')).not.toBeNull();
     TestBed.resetTestingModule();
     const { fixture } = await setup(makeToday(), true, false);
-    expect(fixture.nativeElement.querySelector('[data-testid="quick-action-settings"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="quick-action-time-off"]')).toBeNull();
   });
 });

@@ -32,9 +32,12 @@
 
   @if (shown(); as data) {
     @if (data.thisWeek.status === 'no_target') {
-      <p class="wp-no-target" data-testid="wp-no-target">
-        No working hours set for your legal entity, so there is no weekly target.
-      </p>
+      <app-widget-empty
+        data-testid="wp-no-target"
+        illustration="clipboard-clock"
+        heading="No weekly target"
+        description="No working hours set for your legal entity, so there is no weekly target."
+      />
     } @else {
       <div
         [class]="'wp-body wp-' + view()"

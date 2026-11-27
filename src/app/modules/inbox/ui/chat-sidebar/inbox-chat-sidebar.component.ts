@@ -103,7 +103,7 @@ function chatOfUrl(url: string): { source: string; kind: string; id: string } | 
     :host { display: block; height: 100%; min-height: 0; }
     /* Same shell as the app's sub-sidebar, wider so each chat shows its last message and time. */
     .ics { box-sizing: border-box; display: flex; width: 21rem; height: calc(100% - .5rem); min-height: 0; flex-direction: column; gap: 10px;
-      margin: 0 0 .5rem .25rem; padding: 1rem .625rem; border: 1px solid var(--color-border); border-right: none; border-radius: 0 0 0 14px;
+      margin: 0 0 .5rem .25rem; padding: 1rem .625rem; border: 1px solid var(--color-border); border-right: none; border-radius: 14px 0 0 14px;
       background: var(--color-surface-secondary); box-shadow: 0 1px 3px rgb(0 0 0 / 3%); }
     /* Dark mode: same tone swap as the app's sub-sidebar. */
     :host-context([data-mode='dark']) .ics, :host-context(html.dark) .ics {

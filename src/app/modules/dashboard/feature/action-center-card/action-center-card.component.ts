@@ -1,3 +1,4 @@
+import { WidgetEmptyComponent } from '../../../../shared/ui/widget-empty/widget-empty.component';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -61,7 +62,7 @@ interface DecisionForm {
 @Component({
   selector: 'app-action-center-card',
   standalone: true,
-  imports: [KeyboardClickDirective, StopClickPropagationDirective, AvatarComponent, ErrorStateComponent, PopoutPanelComponent, PopoutHeaderActionsComponent],
+  imports: [WidgetEmptyComponent, KeyboardClickDirective, StopClickPropagationDirective, AvatarComponent, ErrorStateComponent, PopoutPanelComponent, PopoutHeaderActionsComponent],
   templateUrl: './action-center-card.component.html',
   styleUrl: './action-center-card.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

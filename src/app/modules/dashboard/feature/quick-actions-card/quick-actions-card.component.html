@@ -48,3 +48,7 @@
     </ul>
   </div>
 </section>
+
+@if (leaveRequestOpen()) {
+  <app-new-leave-request-host (closed)="leaveRequestOpen.set(false)" />
+}

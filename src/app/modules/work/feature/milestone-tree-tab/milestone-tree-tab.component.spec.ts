@@ -508,7 +508,9 @@ describe('MilestoneTreeTabComponent', () => {
     setup('o1');
     fixture.detectChanges();
 
-    (fixture.nativeElement.querySelector('[data-testid="panel-request-hours"]') as HTMLButtonElement).click();
+    (fixture.nativeElement.querySelector('[data-testid="panel-more"]') as HTMLElement).click();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[data-testid="menu-item-request-hours"]') as HTMLButtonElement).click();
     fixture.detectChanges();
 
     expect(fixture.componentInstance.allocationNode()?.id).toBe('o1');

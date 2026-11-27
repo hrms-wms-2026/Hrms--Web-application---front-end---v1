@@ -20,7 +20,16 @@
     </div>
   </header>
 
-  <div class="mt-2 min-h-0 flex-1">
+  <ng-template #kpiStrip>
+    <app-project-kpi-strip [projects]="store.filteredProjects()" [filter]="kpiFilter()" (filterChange)="kpiFilter.set($event)" />
+  </ng-template>
+
+  <!-- Card and table views: the KPI strip runs across the page. The list view keeps it above the rows, beside the details. -->
+  @if (viewMode() !== 'list' && !store.loading() && !store.error() && store.filteredProjects().length > 0) {
+    <div class="mb-4"><ng-container [ngTemplateOutlet]="kpiStrip" /></div>
+  }
+
+  <div class="min-h-0 flex-1">
     @if (store.loading()) {
       <app-loader label="Loading projects…" />
     } @else if (store.error()) {
@@ -29,12 +38,16 @@
       <app-empty-state title="No projects yet" description="Create your first project to get started.">
         <app-button variant="primary" (pressed)="openCreateModal()">+ Create project</app-button>
       </app-empty-state>
+    } @else if (visibleProjects().length === 0 && viewMode() === 'card') {
+      <app-empty-state title="No projects here" description="No project matches this status right now." data-testid="project-kpi-empty">
+        <app-button variant="secondary" (pressed)="kpiFilter.set('all')">Show all projects</app-button>
+      </app-empty-state>
     } @else {
       <!-- TABLE VIEW -->
       @if (viewMode() === 'table') {
         <div class="h-full overflow-y-auto pb-4 scroll-fade">
           <app-project-table-view
-            [projects]="store.filteredProjects()"
+            [projects]="visibleProjects()"
             [categories]="categoryStore.categories()"
             [columnFilters]="headerFilters()"
             [filterValues]="headerFilterValues()"
@@ -51,18 +64,31 @@
 
       <!-- LIST VIEW (Split Master-Detail) -->
       @else if (viewMode() === 'list') {
-        <div class="grid h-full grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_26.5rem] lg:items-start">
-          <div class="flex flex-col gap-2.5 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pr-1" data-testid="project-list">
-            @for (project of store.filteredProjects(); track project.id) {
+        <div class="grid h-full grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_28rem] lg:items-start">
+          <div class="flex flex-col gap-4 lg:h-full lg:min-h-0">
+            <ng-container [ngTemplateOutlet]="kpiStrip" />
+          <div class="flex flex-col gap-3 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1" data-testid="project-list">
+            @if (visibleProjects().length === 0) {
+              <app-empty-state title="No projects here" description="No project matches this status right now." data-testid="project-kpi-empty">
+                <app-button variant="secondary" (pressed)="kpiFilter.set('all')">Show all projects</app-button>
+              </app-empty-state>
+            }
+            @for (project of visibleProjects(); track project.id) {
               <app-project-list-row
                 [project]="project"
+                [categoryName]="categoryNames().get(project.categoryId) ?? ''"
                 [selected]="selectedProject()?.id === project.id"
                 (selectedChange)="onSelectProject(project)"
+                (viewed)="onView(project)"
+                (settingsRequested)="onProjectSettingsRequested(project)"
+                (achieveRequested)="onAchieve(project)"
+                (deleteRequested)="openDeleteConfirm(project)"
               />
             }
           </div>
+          </div>
           @if (selectedProject(); as selected) {
-            <div class="lg:self-start">
+            <div class="lg:h-full lg:min-h-0">
               <app-project-explanation-card
                 [project]="selected"
                 (viewed)="onView(selected)"
@@ -79,7 +105,7 @@
       @else if (viewMode() === 'card') {
         <div class="h-full overflow-y-auto pb-4 scroll-fade">
           <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" data-testid="project-grid">
-            @for (project of store.filteredProjects(); track project.id) {
+            @for (project of visibleProjects(); track project.id) {
               <app-project-card
                 [project]="project"
                 [expanded]="expandedCardIds().has(project.id)"

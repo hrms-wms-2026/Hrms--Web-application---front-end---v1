@@ -70,15 +70,42 @@ describe('ProjectListRowComponent', () => {
     expect(fixture.nativeElement.textContent).toContain(project.name.charAt(0).toUpperCase());
   });
 
-  it('keeps the logo placeholder neutral when the row is selected', () => {
+  it('turns the logo placeholder solid accent only on the selected row', () => {
     fixture.componentRef.setInput('project', { ...project, color: '#dc2626' });
+    fixture.detectChanges();
+    const placeholder = () => fixture.nativeElement.querySelector('[data-testid="project-row-placeholder"]') as HTMLElement;
+    expect(placeholder().className).toContain('text-[var(--color-text-primary)]');
+    expect(placeholder().className).not.toContain('bg-[var(--color-accent)]');
+
     fixture.componentRef.setInput('selected', true);
     fixture.detectChanges();
+    expect(placeholder().className).toContain('bg-[var(--color-accent)]');
+    expect(placeholder().style.background).toBe('');
+  });
 
-    const placeholder = fixture.nativeElement.querySelector('[data-testid="project-row-placeholder"]') as HTMLElement;
-    expect(placeholder.className).toContain('bg-[var(--color-surface-secondary)]');
-    expect(placeholder.className).toContain('text-[var(--color-text-primary)]');
-    expect(placeholder.className).not.toContain('color-accent');
-    expect(placeholder.style.background).toBe('');
+  it('shows the key with the category, and the target date while on time', () => {
+    fixture.componentRef.setInput('project', { ...project, targetDate: '2099-12-31' });
+    fixture.componentRef.setInput('categoryName', 'Operations');
+    fixture.detectChanges();
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('[data-testid="project-row-category"]')?.textContent?.trim()).toBe('Operations');
+    expect(el.querySelector('[data-testid="project-row-date"]')?.textContent).toContain('2099-12-31');
+    expect(el.querySelector('[data-testid="project-row-overdue"]')).toBeNull();
+  });
+
+  it('shows how overdue a project is once its target date has passed', () => {
+    fixture.componentRef.setInput('project', { ...project, targetDate: '2020-01-01' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="project-row-overdue"]')?.textContent).toContain('days overdue');
+  });
+
+  it('offers only Open project to a non-lead, and lead actions to the lead', () => {
+    fixture.componentRef.setInput('project', { ...project, isLead: false });
+    fixture.detectChanges();
+    expect(fixture.componentInstance.menuItems().map((i) => i.id)).toEqual(['open']);
+
+    fixture.componentRef.setInput('project', project);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.menuItems().map((i) => i.id)).toEqual(['open', 'settings', 'archive', 'delete']);
   });
 });

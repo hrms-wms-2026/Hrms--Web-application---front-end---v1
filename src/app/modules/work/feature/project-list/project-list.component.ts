@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { Router } from '@angular/router';
 import { ProjectListStore, AchievedFilter } from '../../state/project-list.store';
 import { ProjectCategoryStore } from '../../state/project-category.store';
@@ -9,6 +10,8 @@ import { ProjectListRowComponent } from '../../ui/project-list-row/project-list-
 import { ProjectExplanationCardComponent } from '../../ui/project-explanation-card/project-explanation-card.component';
 import { ProjectTableViewComponent } from '../../ui/project-table-view/project-table-view.component';
 import { ProjectCardComponent } from '../../ui/project-card/project-card.component';
+import { ProjectKpiFilter, ProjectKpiStripComponent } from '../../ui/project-kpi-strip/project-kpi-strip.component';
+import { projectStatus } from '../../utils/project-status.util';
 import { MemberManagementPopupComponent } from '../../ui/member-management-popup/member-management-popup.component';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
@@ -25,8 +28,9 @@ export type ProjectViewMode = 'table' | 'list' | 'card';
   selector: 'app-project-list',
   standalone: true,
   imports: [
+    NgTemplateOutlet,
     ProjectFilterBarComponent, ProjectFormModalComponent, ConfirmModalComponent,
-    ProjectListRowComponent, ProjectExplanationCardComponent, ProjectTableViewComponent, ProjectCardComponent,
+    ProjectListRowComponent, ProjectExplanationCardComponent, ProjectTableViewComponent, ProjectCardComponent, ProjectKpiStripComponent,
     MemberManagementPopupComponent, BreadcrumbHeaderComponent, ButtonComponent, ViewModeToggleComponent,
     LoaderComponent, ErrorStateComponent, EmptyStateComponent
   ],
@@ -94,8 +98,22 @@ export class ProjectListComponent implements OnInit {
     }))
   );
 
-  readonly selectedProject = computed(() => {
+  /** The KPI strip's status filter, applied on top of the filter bar in every view. */
+  readonly kpiFilter = signal<ProjectKpiFilter>('all');
+
+  readonly visibleProjects = computed(() => {
+    const filter = this.kpiFilter();
     const list = this.store.filteredProjects();
+    if (filter === 'all') return list;
+    const today = new Date();
+    return list.filter((project) => projectStatus(project, today) === filter);
+  });
+
+  /** Category names by id, so each list row can show its project's category. */
+  readonly categoryNames = computed(() => new Map(this.categoryStore.categories().map((c) => [c.id, c.name] as const)));
+
+  readonly selectedProject = computed(() => {
+    const list = this.visibleProjects();
     if (list.length === 0) return null;
     const id = this.selectedProjectId();
     return list.find((p) => p.id === id) ?? list[0];
