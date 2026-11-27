@@ -64,12 +64,23 @@
               aria-hidden="true"
             >{{ initial(project) }}</span>
             <div class="min-w-0 flex-1">
-              <p class="truncate text-sm font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-accent)]">{{ project.name }}</p>
-              <p class="truncate text-xs text-[var(--color-text-secondary)]" data-testid="active-projects-hours">{{ hoursLabel(project) }}</p>
+              <p class="flex min-w-0 items-center gap-1.5">
+                <span class="truncate text-sm font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-accent)]">{{ project.name }}</span>
+                @if (focusId() === project.id) {
+                  <span
+                    class="shrink-0 rounded-full border border-[var(--color-widget-mild-line)] bg-[var(--color-widget-mild)] px-1.5 py-px text-[10px] font-semibold text-[var(--color-widget-shade-1)]"
+                    data-testid="active-projects-focus"
+                  >Focus</span>
+                }
+              </p>
+              <p class="truncate text-xs text-[var(--color-text-secondary)]" data-testid="active-projects-tasks">{{ tasksLabel(project) }}</p>
             </div>
-            <div class="w-20 shrink-0 @sm:w-28">
-              <p class="text-right text-xs font-medium text-[var(--color-text-secondary)]" data-testid="active-projects-percent">{{ progress(project) }}%</p>
-              <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-secondary)]">
+            <div class="w-24 shrink-0 @sm:w-32" [attr.title]="progress(project) + '% of your task hours done'">
+              <p class="flex items-baseline justify-end gap-1 tabular-nums">
+                <span class="text-sm font-bold text-[var(--color-text-primary)]" data-testid="active-projects-hours">{{ allocatedLabel(project) }}</span>
+                <span class="text-[11px] text-[var(--color-text-muted)]">allocated</span>
+              </p>
+              <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-secondary)]" data-testid="active-projects-percent" [attr.data-percent]="progress(project)">
                 <div class="h-full rounded-full" [style.width.%]="progress(project)" [style.background-color]="color(project)"></div>
               </div>
             </div>

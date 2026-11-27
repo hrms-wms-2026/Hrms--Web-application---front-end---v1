@@ -63,7 +63,7 @@ describe('ActiveProjectsCardComponent', () => {
       );
     expect(swatches()).toEqual([widgetShadeFor('p-1'), widgetShadeFor('p-2'), widgetShadeFor('p-3')]);
     // The same project keeps its shade when the list reloads in another order.
-    listMine.mockReturnValue(of(page([project('p-3'), project('p-1', { color: '#ff0000' })])));
+    listMine.mockReturnValue(of(page([project('p-3', { myOpenHours: 5 }), project('p-1', { color: '#ff0000' })])));
     (fixture.nativeElement.querySelector('[data-testid="popout-refresh"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(swatches()).toEqual([widgetShadeFor('p-3'), widgetShadeFor('p-1')]);
@@ -82,19 +82,48 @@ describe('ActiveProjectsCardComponent', () => {
     expect(q(fixture, 'active-projects-more')?.textContent?.trim()).toBe('+1 more');
   });
 
-  it('shows a letter tile, hours done of allocated and the percentage', async () => {
+  it('shows my own allocated task hours, what is still open and how much is done - not the project budget', async () => {
     const fixture = await setup(
-      vi.fn().mockReturnValue(of(page([project('1', { name: 'portal Revamp', allocatedHours: 20, completedHours: 12, color: '#123456' })])))
+      vi.fn().mockReturnValue(
+        of(page([project('1', { name: 'portal Revamp', allocatedHours: 200, completedHours: 120, myAllocatedHours: 20, myOpenHours: 8, myOpenTaskCount: 3 })]))
+      )
     );
     const item = q(fixture, 'active-projects-item')!;
     expect(item.textContent).toContain('P');
-    expect(q(fixture, 'active-projects-hours')?.textContent?.trim()).toBe('12h / 20h');
-    expect(q(fixture, 'active-projects-percent')?.textContent?.trim()).toBe('60%');
+    expect(q(fixture, 'active-projects-hours')?.textContent?.trim()).toBe('20h');
+    expect(q(fixture, 'active-projects-tasks')?.textContent?.trim()).toBe('8h open · 3 tasks');
+    expect(q(fixture, 'active-projects-percent')?.getAttribute('data-percent')).toBe('60');
   });
 
-  it('shows 0% rather than NaN when a project has no allocated hours', async () => {
-    const fixture = await setup(vi.fn().mockReturnValue(of(page([project('1', { allocatedHours: 0, completedHours: 3 })]))));
-    expect(q(fixture, 'active-projects-percent')?.textContent?.trim()).toBe('0%');
+  it('orders projects by my open task hours, then my allocated hours, with no-task projects last', async () => {
+    const fixture = await setup(
+      vi.fn().mockReturnValue(
+        of(
+          page([
+            project('office', { name: 'Office' }),
+            project('small', { name: 'Small', myAllocatedHours: 4, myOpenHours: 2, myOpenTaskCount: 1 }),
+            project('big', { name: 'Big', myAllocatedHours: 30, myOpenHours: 18, myOpenTaskCount: 5 }),
+            project('done', { name: 'Done', myAllocatedHours: 40, myOpenHours: 0, myOpenTaskCount: 0 })
+          ])
+        )
+      )
+    );
+    const names = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('[data-testid="active-projects-item"]')).map((el) =>
+      el.querySelector('span.truncate')?.textContent?.trim()
+    );
+    expect(names).toEqual(['Big', 'Small', 'Done', 'Office']);
+    expect(q(fixture, 'active-projects-focus')?.closest('[data-testid="active-projects-item"]')?.textContent).toContain('Big');
+    const labels = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('[data-testid="active-projects-tasks"]')).map((el) =>
+      el.textContent?.trim()
+    );
+    expect(labels).toEqual(['18h open · 5 tasks', '2h open · 1 task', 'All your tasks done', 'No tasks assigned to you']);
+  });
+
+  it('shows no Focus chip and 0% rather than NaN when I have no tasks anywhere', async () => {
+    const fixture = await setup(vi.fn().mockReturnValue(of(page([project('1')]))));
+    expect(q(fixture, 'active-projects-percent')?.getAttribute('data-percent')).toBe('0');
+    expect(q(fixture, 'active-projects-hours')?.textContent?.trim()).toBe('0h');
+    expect(q(fixture, 'active-projects-focus')).toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('NaN');
   });
 
