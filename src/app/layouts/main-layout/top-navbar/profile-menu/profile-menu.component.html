@@ -9,7 +9,7 @@
     (click)="toggle()"
   >
     <div class="profile-avatar-wrapper">
-      <app-avatar [avatarUrl]="avatarUrl()" [userName]="userName()" [email]="email()" size="sm" />
+      <app-avatar [avatarUrl]="avatarUrl()" [userName]="userName()" [email]="email()" size="md" />
       @if (isOnline()) {
         <span class="profile-online-badge" data-testid="profile-online-badge" title="Online"></span>
       }

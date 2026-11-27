@@ -102,6 +102,14 @@ function clearLegacyDashboardStorage(): void {
     />
   `,
   styles: `
+    /* Dark mode (2026-11-27 mockup): every widget's outer frame - the outermost rounded box in its grid cell - gets
+       a faint top highlight and a deep soft shadow, so the cards read as raised glass panels on the page. */
+    :host-context(html.dark) ::ng-deep :where([data-instance-id], [data-testid='grid-pinned'])
+      :is(.rounded-2xl, app-widget-card > section):not(.rounded-2xl .rounded-2xl),
+    :host-context([data-mode='dark']) ::ng-deep :where([data-instance-id], [data-testid='grid-pinned'])
+      :is(.rounded-2xl, app-widget-card > section):not(.rounded-2xl .rounded-2xl) {
+      box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 12px 32px -14px rgb(0 0 0 / 0.6);
+    }
     /* My Team widgets sit on a light gray instead of the plain surface; their inner gray (bar tracks, chips,
        skeletons) moves one step darker so it still shows against the card. */
     :host(.dashboard-shell--team) {

@@ -69,6 +69,18 @@ const STATUS_LABELS: Record<string, string> = {
   templateUrl: './today-at-a-glance-card.component.html',
   // On a wide card the illustration sits top right and fades out to the left and to the bottom.
   styles: `
+    /* The status tiles and Today's Activity: soft white panels on the blue-gray card, lifted by a faint blue shadow. */
+    .glance-tile {
+      border: 1px solid color-mix(in srgb, var(--color-surface) 70%, transparent);
+      background: color-mix(in srgb, var(--color-surface) 78%, transparent);
+      box-shadow: 0 1px 2px rgb(16 24 40 / 0.04), 0 6px 16px -6px rgb(30 58 110 / 0.12);
+    }
+    :host-context(html.dark) .glance-tile,
+    :host-context([data-mode='dark']) .glance-tile {
+      border-color: var(--color-border);
+      background: color-mix(in srgb, var(--color-surface) 85%, transparent);
+      box-shadow: none;
+    }
     @container (min-width: 32rem) {
       .greeting-art {
         -webkit-mask-image: linear-gradient(to right, transparent, #000 45%), linear-gradient(to bottom, #000 50%, transparent);

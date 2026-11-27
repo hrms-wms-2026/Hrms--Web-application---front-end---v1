@@ -46,6 +46,11 @@ describe('TreeExplanationPanelComponent', () => {
     fixture.detectChanges();
   }
 
+
+  function openMenu(): void {
+    (fixture.nativeElement.querySelector('[data-testid="panel-more"]') as HTMLElement).click();
+    fixture.detectChanges();
+  }
   it('explains each monitor alert on the node inside the card', () => {
     setup(objective);
     expect(fixture.nativeElement.querySelector('[data-testid="panel-alerts"]')).toBeNull();
@@ -90,13 +95,15 @@ describe('TreeExplanationPanelComponent', () => {
     const requested: MilestoneTreeNode[] = [];
     fixture.componentInstance.allocationRequested.subscribe((n) => requested.push(n));
 
-    (fixture.nativeElement.querySelector('[data-testid="panel-request-hours"]') as HTMLButtonElement).click();
+    openMenu();
+    (fixture.nativeElement.querySelector('[data-testid="menu-item-request-hours"]') as HTMLButtonElement).click();
 
     expect(requested.map((n) => n.id)).toEqual(['o1']);
-    setup({ ...objective, isAchieved: true });
-    expect(fixture.nativeElement.querySelector('[data-testid="panel-request-hours"]')).toBeNull();
+    setup({ ...objective, isAchieved: true, isOwner: false });
+    expect(fixture.nativeElement.querySelector('[data-testid="panel-more"]')).toBeNull();
     setup(sprint);
-    expect(fixture.nativeElement.querySelector('[data-testid="panel-request-hours"]')).toBeNull();
+    openMenu();
+    expect(fixture.nativeElement.querySelector('[data-testid="menu-item-request-hours"]')).toBeNull();
   });
 
   it('renders objective fields and hides actions when the caller is not the owner', () => {
@@ -108,23 +115,26 @@ describe('TreeExplanationPanelComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="panel-create-sub"]')).toBeNull();
   });
 
-  it('shows the six module actions for an owned leaf', () => {
+  it('shows the main module actions as buttons and the rest in the "..." menu for an owned leaf', () => {
     setup(objective);
     expect(fixture.nativeElement.querySelector('[data-testid="panel-create-sub"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="panel-edit"]')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('[data-testid="panel-members"]')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('[data-testid="panel-create-task"]')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('[data-testid="panel-create-sprint"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="panel-achieve"]')).not.toBeNull();
+    openMenu();
+    const ids = Array.from(fixture.nativeElement.querySelectorAll('[data-testid^="menu-item-"]') as NodeListOf<HTMLElement>)
+      .map((el) => el.getAttribute('data-testid'));
+    expect(ids).toEqual(['menu-item-members', 'menu-item-create-task', 'menu-item-create-sprint', 'menu-item-request-hours']);
   });
 
   it('renders sprint status and owner-gated sprint actions', () => {
     setup(sprint);
     expect(fixture.nativeElement.querySelector('[data-testid="panel-status"]')?.textContent).toContain('active');
     expect(fixture.nativeElement.querySelector('[data-testid="panel-achieve-sprint"]')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('[data-testid="panel-complete-sprint"]')).not.toBeNull();
+    openMenu();
+    expect(fixture.nativeElement.querySelector('[data-testid="menu-item-complete-sprint"]')).not.toBeNull();
     setup({ ...sprint, isOwner: false });
     expect(fixture.nativeElement.querySelector('[data-testid="panel-achieve-sprint"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="panel-more"]')).toBeNull();
   });
 
   it('renders task assignee and keeps edit ungated while delete is owner-gated', () => {
@@ -137,15 +147,18 @@ describe('TreeExplanationPanelComponent', () => {
   });
   it('shows "Delete sprint" only for complete or achieved sprints and emits deleteSprintRequested', () => {
     setup(sprint);
-    expect(fixture.nativeElement.querySelector('[data-testid="panel-delete-sprint"]')).toBeNull();
+    openMenu();
+    expect(fixture.nativeElement.querySelector('[data-testid="menu-item-delete-sprint"]')).toBeNull();
 
     setup({ ...sprint, status: 'complete' });
     const emitted: MilestoneTreeNode[] = [];
     fixture.componentInstance.deleteSprintRequested.subscribe((n) => emitted.push(n));
-    (fixture.nativeElement.querySelector('[data-testid="panel-delete-sprint"]') as HTMLButtonElement).click();
+    openMenu();
+    (fixture.nativeElement.querySelector('[data-testid="menu-item-delete-sprint"]') as HTMLButtonElement).click();
     expect(emitted.map((n) => n.id)).toEqual(['spr-1']);
 
     setup({ ...sprint, status: 'achieved' });
-    expect(fixture.nativeElement.querySelector('[data-testid="panel-delete-sprint"]')).not.toBeNull();
+    openMenu();
+    expect(fixture.nativeElement.querySelector('[data-testid="menu-item-delete-sprint"]')).not.toBeNull();
   });
 });

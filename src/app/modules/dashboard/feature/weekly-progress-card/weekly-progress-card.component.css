@@ -8,11 +8,6 @@
   color: var(--color-text-primary);
 }
 
-.wp-no-target {
-  font-size: 0.875rem;
-  color: var(--color-text-secondary);
-}
-
 .wp-body {
   display: flex;
   min-height: 0;

@@ -6,10 +6,10 @@ const at = (hour: number, minute = 0) => new Date(2026, 9, 23, hour, minute);
 
 describe('getTimeOfDayInfo', () => {
   it.each([
-    [5, 0, 'morning', 'Good morning', 'fresh_early_morning'],
-    [11, 59, 'morning', 'Good morning', 'fresh_early_morning'],
-    [12, 0, 'afternoon', 'Good afternoon', 'sunny_clear_midday'],
-    [16, 59, 'afternoon', 'Good afternoon', 'sunny_clear_midday'],
+    [5, 0, 'morning', 'Good morning', 'greeting-morning-blue'],
+    [11, 59, 'morning', 'Good morning', 'greeting-morning-blue'],
+    [12, 0, 'afternoon', 'Good afternoon', 'greeting-midday-blue'],
+    [16, 59, 'afternoon', 'Good afternoon', 'greeting-midday-blue'],
     [17, 0, 'evening', 'Good evening', 'golden_hour_sunset_dusk'],
     [20, 59, 'evening', 'Good evening', 'golden_hour_sunset_dusk'],
     [21, 0, 'night', 'Good night', 'calm_night_sky_deep'],

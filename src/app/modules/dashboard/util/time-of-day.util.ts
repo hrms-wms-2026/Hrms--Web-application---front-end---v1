@@ -42,7 +42,7 @@ export function getTimeOfDayInfo(now: Date = new Date()): TimeOfDayInfo {
       return {
         timeOfDay: 'morning',
         greeting: 'Good morning',
-        illustrationSrc: 'assets/dashboard/modern_minimalist_clean_digital_vector_illustration_of_fresh_early_morning.png',
+        illustrationSrc: 'assets/dashboard/greeting-morning-blue.webp',
         emoji: '☀️',
         glowClass: 'bg-amber-200/50',
         cardBgClass: 'greeting-card-bg-morning'
@@ -51,7 +51,7 @@ export function getTimeOfDayInfo(now: Date = new Date()): TimeOfDayInfo {
       return {
         timeOfDay: 'afternoon',
         greeting: 'Good afternoon',
-        illustrationSrc: 'assets/dashboard/modern_minimalist_clean_digital_vector_illustration_of_sunny_clear_midday.png',
+        illustrationSrc: 'assets/dashboard/greeting-midday-blue.webp',
         emoji: '☀️',
         glowClass: 'bg-amber-300/60',
         cardBgClass: 'greeting-card-bg-afternoon'

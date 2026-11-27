@@ -81,7 +81,7 @@ describe('ProfileMenuComponent', () => {
     const chevron = trigger.querySelector('.profile-menu-chevron') as SVGElement;
     const styles = getComputedStyle(trigger);
 
-    expect(styles.gap).toBe('2px');
+    expect(styles.gap).toBe('4px');
     expect(styles.backgroundColor).toBe('rgba(0, 0, 0, 0)');
     expect(['', 'none']).toContain(styles.boxShadow);
     expect(getComputedStyle(chevron).width).toBe('12px');
