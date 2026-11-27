@@ -42,7 +42,7 @@
       [value]="addForm.controls.name.value"
       (valueChange)="addForm.controls.name.setValue($event)"
       (blurred)="addForm.controls.name.markAsTouched()"
-      [error]="addForm.controls.name.touched && addForm.controls.name.invalid ? 'Full name is required.' : ''"
+      [error]="fieldError(addForm.controls.name, 'Full name')"
     />
     <app-input
       label="Relationship"
@@ -50,7 +50,7 @@
       [value]="addForm.controls.relationship.value"
       (valueChange)="addForm.controls.relationship.setValue($event)"
       (blurred)="addForm.controls.relationship.markAsTouched()"
-      [error]="addForm.controls.relationship.touched && addForm.controls.relationship.invalid ? 'Relationship is required.' : ''"
+      [error]="fieldError(addForm.controls.relationship, 'Relationship')"
     />
     <app-input
       label="Primary phone"
@@ -59,7 +59,7 @@
       [value]="addForm.controls.phone.value"
       (valueChange)="addForm.controls.phone.setValue($event)"
       (blurred)="addForm.controls.phone.markAsTouched()"
-      [error]="addForm.controls.phone.touched && addForm.controls.phone.invalid ? 'Phone number is required.' : ''"
+      [error]="fieldError(addForm.controls.phone, 'Phone number')"
     />
     <app-input
       label="Email (optional)"
@@ -67,8 +67,11 @@
       placeholder="e.g. john@example.com"
       [value]="addForm.controls.email.value"
       (valueChange)="addForm.controls.email.setValue($event)"
+      (blurred)="addForm.controls.email.markAsTouched()"
+      [error]="fieldError(addForm.controls.email, 'Email')"
     />
   </div>
+  <app-field-error [message]="serverFormError() ?? ''" />
   <div class="pf-actions">
     <app-button type="submit" variant="secondary" [disabled]="saving()">Add contact</app-button>
   </div>

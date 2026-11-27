@@ -3,6 +3,8 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { SecurityInfo } from '../../models/profile.model';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { AppValidators, fieldError } from '../../../../shared/utils/validators';
+import { AUTH_LIMITS } from '../../../../core/auth/utils/auth-limits';
 
 type MfaSetupStep = 'idle' | 'show-qr' | 'confirm-code';
 
@@ -28,13 +30,14 @@ export class SecurityPanelComponent {
   readonly mfaSetupStep = signal<MfaSetupStep>('idle');
 
   private readonly fb = new FormBuilder().nonNullable;
+  protected readonly fieldError = fieldError;
 
   readonly passwordForm = this.fb.group({
     currentPassword: ['', Validators.required],
-    newPassword: ['', [Validators.required, Validators.minLength(8)]]
+    newPassword: ['', [Validators.required, Validators.minLength(AUTH_LIMITS.passwordMin)]]
   });
 
-  readonly mfaCodeForm = this.fb.group({ code: ['', [Validators.required, Validators.pattern(/^\d{6}$/)]] });
+  readonly mfaCodeForm = this.fb.group({ code: ['', [Validators.required, AppValidators.pattern(/^\d{6}$/, 'mfaCode')]] });
   readonly disableMfaForm = this.fb.group({ currentPassword: ['', Validators.required] });
 
   onSubmitPasswordChange(): void {
@@ -61,7 +64,7 @@ export class SecurityPanelComponent {
       this.mfaCodeForm.markAllAsTouched();
       return;
     }
-    this.confirmMfaSetup.emit(this.mfaCodeForm.getRawValue().code);
+    this.confirmMfaSetup.emit(this.mfaCodeForm.getRawValue().code.trim());
     this.mfaSetupStep.set('idle');
     this.mfaCodeForm.reset();
   }

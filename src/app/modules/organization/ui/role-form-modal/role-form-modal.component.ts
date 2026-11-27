@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import {
   ModulePermissionGroup,
   PermissionCatalogItem,
@@ -18,6 +18,10 @@ import {
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
 import { CharCounterComponent } from '../../../../shared/ui/char-counter/char-counter.component';
+import { AppValidators, applyServerFieldErrors, fieldError } from '../../../../shared/utils/validators';
+import { ROLE_LIMITS } from '../../utils/organization-limits';
+import { ApiError } from '../../../../core/errors/api-error';
+import { FieldErrorComponent } from '../../../../shared/ui/field-error/field-error.component';
 
 export interface RoleFormSubmitValue {
   name: string;
@@ -33,13 +37,15 @@ export interface RoleFormSubmitValue {
   selector: 'app-role-form-modal',
   host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
-  imports: [CharCounterComponent, StopClickPropagationDirective, CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, DataTableComponent, DataTableCellDirective],
+  imports: [FieldErrorComponent, CharCounterComponent, StopClickPropagationDirective, CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, DataTableComponent, DataTableCellDirective],
   templateUrl: './role-form-modal.component.html',
   styleUrl: './role-form-modal.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class RoleFormModalComponent implements OnChanges {
   readonly limits = TEXT_LIMITS;
+  protected readonly fieldError = fieldError;
+  protected readonly roleLimits = ROLE_LIMITS;
   private readonly fb = inject(FormBuilder);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -47,6 +53,15 @@ export class RoleFormModalComponent implements OnChanges {
   @Input() role: RoleSummaryResponse | null = null;
   /** The role's permissions; loads after the popup opens for an existing role. */
   @Input() roleDetail: RoleDetailResponse | null = null;
+  /** A message from a refused save that matches no field, shown inside the modal (task 20). */
+  protected readonly serverFormError = signal<string | null>(null);
+
+  /** The store's ApiError for the last failed save: field messages go next to their fields. */
+  @Input() set serverError(value: ApiError | null) {
+    // Only the fields this template shows an error for; any other message is shown above the footer.
+    this.serverFormError.set(value ? applyServerFieldErrors(this.form, value, ['name']) : null);
+  }
+
   @Input({ required: true }) groupedCatalog: readonly ModulePermissionGroup[] = [];
   /** The role's permissions are still loading. */
   @Input() loading = false;
@@ -66,8 +81,8 @@ export class RoleFormModalComponent implements OnChanges {
   readonly platformIds = computed<ReadonlySet<string>>(() => new Set(this.platformPermissions().map((p) => p.id)));
 
   readonly form = this.fb.group({
-    name: ['', [Validators.required, Validators.maxLength(100)]],
-    description: ['' as string | null, [Validators.maxLength(500)]]
+    name: ['', [AppValidators.name(ROLE_LIMITS.nameMax), AppValidators.pattern(ROLE_LIMITS.namePattern, 'nameChars')]],
+    description: ['' as string | null, AppValidators.maxLength(ROLE_LIMITS.descriptionMax)]
   });
 
   /** One shared data table per module: the module name is the column header. */

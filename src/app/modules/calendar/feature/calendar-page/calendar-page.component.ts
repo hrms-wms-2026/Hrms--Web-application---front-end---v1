@@ -38,6 +38,7 @@ import { WorkItemPlanFlow } from '../../state/work-item-plan-flow.service';
 import { PlannerLeaveLayerStore } from '../../state/planner-leave-layer.store';
 import { TeamPlannerStore } from '../../state/team-planner.store';
 import { TeamPlannerComponent } from '../team-planner/team-planner.component';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 import { MyTeamCapabilitiesStore } from '../../../dashboard/state/my-team-capabilities.store';
 import { CREATE_TAB_ORDER, CreateSlot, CreateTab, clock } from '../../ui/planner-create-popover/planner-create-draft';
 import { PlannerApiService } from '../../../work/planner/data-access/planner-api.service';
@@ -112,7 +113,7 @@ const WIDE_SCREEN = '(min-width: 769px)';
     CalendarDayViewComponent, CalendarEventFormModalComponent, MeetingFormModalComponent,
     MeetingOccurrenceDrawerComponent, PlannerFocusPanelComponent, PlannerBlockPickerComponent, TaskFormModalComponent, DatePickerComponent,
     PlannerCreatePopoverComponent, EventTabComponent, WorkItemTabComponent, TimeOffTabComponent, NewLeaveRequestWizardComponent,
-    TeamPlannerComponent, SelectComponent
+    TeamPlannerComponent, SelectComponent, StopClickPropagationDirective
   ],
   // The planner layer belongs to this page: it loads with the visible range and goes away with the page.
   providers: [PlannerLayerStore, WorkItemPlanFlow, PlannerLeaveLayerStore, TeamPlannerStore],

@@ -2,6 +2,8 @@ import { vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { RoleFormModalComponent, RoleFormSubmitValue } from './role-form-modal.component';
 import { ModulePermissionGroup, RoleDetailResponse, RoleSummaryResponse } from '../../models/role.model';
+import { HttpErrorResponse } from '@angular/common/http';
+import { toApiError } from '../../../../core/errors/api-error';
 
 describe('RoleFormModalComponent', () => {
   let fixture: ComponentFixture<RoleFormModalComponent>;
@@ -184,6 +186,54 @@ describe('RoleFormModalComponent', () => {
       const checked = el().querySelectorAll('tbody input[type="checkbox"]:checked');
       expect(checked.length).toBe(3);
       expect(el().textContent).toContain('3 selected');
+    });
+  });
+
+  describe('validation matches the backend role validators', () => {
+    it('limits the name to 50 characters of letters, numbers, spaces, hyphens and underscores', () => {
+      const name = component.form.controls.name;
+      name.setValue('a'.repeat(51));
+      expect(name.errors).toEqual({ maxlength: { requiredLength: 50, actualLength: 51 } });
+      name.setValue('Ops & Finance');
+      expect(name.errors).toEqual({ nameChars: true });
+      name.setValue('Ops lead-2_b');
+      expect(name.errors).toBeNull();
+      name.setValue('   ');
+      expect(name.errors).toEqual({ required: true });
+    });
+
+    it('limits the description to 255 characters', () => {
+      component.form.controls.description.setValue('a'.repeat(256));
+      expect(component.form.controls.description.errors).toEqual({ maxlength: { requiredLength: 255, actualLength: 256 } });
+    });
+
+    it('shows the shared message for the name', () => {
+      component.form.controls.name.setValue('Ops & Finance');
+      component.form.controls.name.markAsTouched();
+      fixture.detectChanges();
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+        'Role name may only contain letters, numbers, spaces, hyphens and underscores.',
+      );
+    });
+  });
+
+  describe('server field errors (task 20 follow-up)', () => {
+    const badRequest = (errors: Record<string, string[]>) =>
+      toApiError(new HttpErrorResponse({ status: 400, error: { title: 'Validation Error', errors } }));
+
+    it('shows the field message of a refused save under its field', () => {
+      fixture.detectChanges();
+      fixture.componentRef.setInput('serverError', badRequest({ Name: ['A role with this name already exists.'] }));
+      fixture.detectChanges();
+      expect(fixture.componentInstance.form.controls.name.errors?.['server']).toEqual({ message: 'A role with this name already exists.' });
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain('A role with this name already exists.');
+    });
+
+    it('shows a message with no field inside the modal', () => {
+      fixture.detectChanges();
+      fixture.componentRef.setInput('serverError', badRequest({ LegalEntityId: ['Legal entity ID is required.'] }));
+      fixture.detectChanges();
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain('Legal entity ID is required.');
     });
   });
 });

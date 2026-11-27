@@ -3,6 +3,10 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ErrorHandlerService, toSafeErrorMessage } from './error-handler.service';
 import { NotificationService } from './notification.service';
 import { LoggerService } from './logger.service';
+import { HttpHeaders } from '@angular/common/http';
+import { signal } from '@angular/core';
+import { NetworkStatusService } from '../network/network-status.service';
+import { rememberCorrelationId } from '../errors/api-error';
 
 describe('ErrorHandlerService & Safe Error Mapper', () => {
   function makeError(status: number, body?: unknown): HttpErrorResponse {
@@ -152,5 +156,61 @@ describe('ErrorHandlerService & Safe Error Mapper', () => {
       event: 'resource_not_found',
       detail: 'raw_db_not_found'
     });
+  });
+
+  describe('message characterization (task 20 must not change these)', () => {
+    it.each([
+      ['problem detail', makeError(409, { title: 'Conflict', detail: 'Code already used.' }), undefined, 'Code already used.'],
+      ['first field error over the generic validation detail', makeError(400, { title: 'Validation Error', detail: 'One or more validation errors occurred.', errors: { Name: ['Name is required.'] } }), undefined, 'Name is required.'],
+      ['legacy message body', makeError(400, { message: 'Leave type is inactive.' }), undefined, 'Leave type is inactive.'],
+      ['plain string body', makeError(422, 'Balance is too low.'), undefined, 'Balance is too low.'],
+      ['5xx with a caller fallback', makeError(503), 'Failed to load.', 'Failed to load.'],
+      ['network with no body', makeError(0), undefined, 'We could not reach the server. Check your connection and try again.'],
+      ['unknown status', makeError(418), undefined, 'Something went wrong. Please try again.'],
+      ['403 without detail', makeError(403), undefined, 'You do not have access to perform this action.'],
+      ['429 without detail', makeError(429), undefined, 'Too many requests. Please wait a moment.'],
+    ])('%s', (_name, err, fallback, expected) => {
+      expect(toSafeErrorMessage(err, fallback)).toBe(expected);
+    });
+  });
+
+  describe('toasts built from ApiError (task 20)', () => {
+    const online = signal(true);
+    beforeEach(() => {
+      online.set(true);
+      TestBed.configureTestingModule({ providers: [{ provide: NetworkStatusService, useValue: { online } }] });
+    });
+    const lastToast = () => TestBed.inject(NotificationService).notifications().at(-1)?.message;
+
+    it('adds the correlation id to a server-error toast so support can find the request', () => {
+      const err = makeError(500);
+      rememberCorrelationId(err, 'abc-123');
+      TestBed.inject(ErrorHandlerService).handle(err);
+      expect(lastToast()).toBe('Something went wrong while saving your changes. Reference: abc-123');
+    });
+
+    it('says how long to wait on a 429 when the wait is known, and keeps the old text when it is not', () => {
+      const service = TestBed.inject(ErrorHandlerService);
+      service.handle(new HttpErrorResponse({ status: 429, error: { detail: 'Too many requests. Please try again later.' }, headers: new HttpHeaders({ 'Retry-After': '30' }) }));
+      expect(lastToast()).toBe('Too many requests. Please wait 30 seconds and try again.');
+      service.handle(makeError(429));
+      expect(lastToast()).toBe('Too many requests. Please wait a moment.');
+    });
+
+    it('does not toast a network failure while the browser is offline, because the banner already says so', () => {
+      online.set(false);
+      TestBed.inject(ErrorHandlerService).handle(makeError(0));
+      expect(lastToast()).toBeUndefined();
+    });
+
+    it('still toasts a 403', () => {
+      TestBed.inject(ErrorHandlerService).handle(makeError(403));
+      expect(lastToast()).toBe('You do not have access to perform this action.');
+    });
+  });
+
+  it('shows a long rate-limit wait in minutes', () => {
+    TestBed.inject(ErrorHandlerService).handle(new HttpErrorResponse({ status: 429, headers: new HttpHeaders({ 'Retry-After': '900' }) }));
+    expect(TestBed.inject(NotificationService).notifications().at(-1)?.message).toBe('Too many requests. Please wait 15 minutes and try again.');
   });
 });

@@ -14,6 +14,7 @@ import {
 import { parseSafeReturnPath, toSafeInternalPath } from '../../utils/safe-return-path';
 import { GoogleIdentityService } from '../../data-access/google-identity.service';
 import { WorkspaceSelectorComponent } from './workspace-selector.component';
+import { fieldError } from '../../../../shared/utils/validators';
 
 interface RememberedAccount {
   displayName: string;
@@ -44,6 +45,8 @@ export class LoginComponent implements OnInit {
   readonly showPassword = signal(false);
   readonly checkingRememberedAccount = signal(false);
   readonly rememberedAccount = signal<RememberedAccount | null>(null);
+
+  protected readonly fieldError = fieldError;
 
   form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],

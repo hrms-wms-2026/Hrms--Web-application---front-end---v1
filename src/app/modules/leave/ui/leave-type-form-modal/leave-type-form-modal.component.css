@@ -285,7 +285,7 @@
 .ltfm-picker__hue:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
 .ltfm-picker__footer { display: flex; align-items: center; justify-content: space-between; }
 .ltfm-picker__preview { width: 1.75rem; height: 1.75rem; border: 1px solid var(--color-border); border-radius: 999px; }
-.ltfm-error { margin: 0.375rem 0 0; }
+.ltfm-error { display: block; margin: 0.375rem 0 0; }
 /* Character counter on the Description label row. */
 .ltfm-counted { position: relative; }
 .ltfm-counter, .ltfm-lock-note { position: absolute; top: 0; right: 0; color: var(--color-text-secondary); font-size: 0.75rem; }

@@ -17,6 +17,8 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { RoleSummaryResponse } from '../../models/role.model';
+import { AppValidators, fieldError } from '../../../../shared/utils/validators';
+import { POSITION_LIMITS } from '../../utils/organization-limits';
 
 export interface UpdateCoverageEvent {
   coverageId: string;
@@ -98,11 +100,13 @@ export class PositionCoverageModalComponent implements OnChanges {
     responsibleEmployeeId: ['']
   });
 
+  protected readonly fieldError = fieldError;
+
   readonly detailsForm = this.fb.group({
     departmentId: ['', [Validators.required]],
-    name: ['', [Validators.required, Validators.maxLength(100)]],
-    code: ['', [Validators.maxLength(5), Validators.pattern(/^[A-Za-z0-9_-]{0,5}$/)]],
-    maxOccupancy: [1, [Validators.required, Validators.min(1)]],
+    name: ['', AppValidators.name(POSITION_LIMITS.nameMax)],
+    code: ['', [AppValidators.maxLength(POSITION_LIMITS.codeMax), AppValidators.pattern(POSITION_LIMITS.codePattern, 'code')]],
+    maxOccupancy: [1, [Validators.required, Validators.min(POSITION_LIMITS.minOccupancy)]],
     reportsToPositionId: ['' as string | null],
     roleId: [''],
     requiresApproval: [false]

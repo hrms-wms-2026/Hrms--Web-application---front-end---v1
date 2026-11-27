@@ -4,6 +4,9 @@ Layout and rules: see `../rules/FILE_CREATION_RULES.md`.
 
 | Plan / Report | Status | Location | Date |
 |---|---|---|---|
+| One Shared Clock and Smarter Polling (Improvements task 16) | pending | `next/2026-11-20-shared-clock-and-polling.md` | 2026-11-20 |
+| API Types from the Backend Contract (Improvements task 08) | implemented | `next/2026-11-18-api-types-generation.md` | 2026-11-18 |
+| Remove Unused and Duplicate Code (Improvements task 12) | pending | `next/2026-11-19-remove-unused-and-duplicates.md` | 2026-11-19 |
 | API Layer Shared Helpers (Improvements task 04) | pending | `next/2026-11-18-api-layer-shared-helpers.md` | 2026-11-18 |
 | Time Off remaining gaps | pending | `next/2026-09-10-time-off-remaining-gaps.md` | 2026-09-10 |
 | Core Auth: Login + Legal Consent Gate | finished | `finished/2026-07-28/2026-07-28-core-auth-login-legal-consent.md` | 2026-07-28 |
@@ -82,3 +85,8 @@ Layout and rules: see `../rules/FILE_CREATION_RULES.md`.
 | Inbox Case History Implementation Plan | `finished/2026-10-19/2026-10-19-inbox-case-history.md` | finished |  |
 | WM Project Network View Implementation Plan | `finished/2026-10-19/2026-10-19-wm-project-network-view.md` | finished |  |
 | Attendance Late/Early Deductions Implementation Plan | `finished/2026-10-20/2026-10-20-attendance-late-early-deductions.md` | finished |  |
+| One Shared Clock and Smarter Polling (Improvements task 16) | `next/2026-11-20-shared-clock-and-polling.md` | in progress | backend `notificationsChanged` event pending (plan Task 11) |
+| Shared Form Validation Rules (Improvements task 24) | `next/2026-11-23-shared-form-validation.md` | done, in review | 3 forms moved; remaining forms listed in the task file |
+| One Error Handling Standard (Improvements task 20) | `next/2026-11-24-error-handling-standard.md` | done, in review | provisional until backend task 24 lands |
+| Server Field Errors on More Forms (task 20 follow-up) | `next/2026-11-24-server-field-errors-forms.md` | done, in review | position form, profile panels and checklist builder still to do |
+| Server Field Errors on Profile and Checklist Forms (task 20 follow-up 2) | `next/2026-11-24-server-field-errors-profile-checklist.md` | done, in review | position form and people forms left with their owners |

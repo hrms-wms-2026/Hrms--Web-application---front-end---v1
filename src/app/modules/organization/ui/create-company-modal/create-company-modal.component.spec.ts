@@ -4,6 +4,8 @@ import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { CreateLegalEntityRequest } from '../../models/legal-entity.model';
 import { CreateCompanyModalComponent } from './create-company-modal.component';
+import { HttpErrorResponse } from '@angular/common/http';
+import { toApiError } from '../../../../core/errors/api-error';
 
 describe('CreateCompanyModalComponent', () => {
   async function setup(availableParents: readonly { id: string; name: string }[] = []) {
@@ -139,5 +141,25 @@ describe('CreateCompanyModalComponent', () => {
     fixture.componentInstance.onSubmit();
 
     expect(saveSpy).not.toHaveBeenCalled();
+  });
+
+  describe('server field errors (task 20 follow-up)', () => {
+    const badRequest = (errors: Record<string, string[]>) =>
+      toApiError(new HttpErrorResponse({ status: 400, error: { title: 'Validation Error', errors } }));
+
+    it('shows the field message of a refused save under its field', async () => {
+      const { fixture } = await setup();
+      fixture.componentRef.setInput('serverError', badRequest({ CompanyCode: ['Company code is already used.'] }));
+      fixture.detectChanges();
+      expect(fixture.componentInstance.form.controls.companyCode.errors?.['server']).toEqual({ message: 'Company code is already used.' });
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain('Company code is already used.');
+    });
+
+    it('shows a message with no field inside the modal', async () => {
+      const { fixture } = await setup();
+      fixture.componentRef.setInput('serverError', badRequest({ TenantId: ['Parent company was not found.'] }));
+      fixture.detectChanges();
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain('Parent company was not found.');
+    });
   });
 });

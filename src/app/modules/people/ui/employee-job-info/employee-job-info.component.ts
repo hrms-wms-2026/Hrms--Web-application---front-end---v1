@@ -15,6 +15,7 @@ import {
   isValidEmployeeNumberFormat,
   normalizeEmployeeNumber
 } from '../../utils/employee-number.utils';
+import { validationMessage } from '../../../../shared/utils/validators';
 
 
 
@@ -61,7 +62,7 @@ import {
               placeholder="Select employment type"
               [options]="employmentTypeOptions()"
               [value]="form.controls.employmentTypeCode.value"
-              [error]="submitAttempted() && form.controls.employmentTypeCode.invalid ? 'Employment type is required.' : ''"
+              [error]="submitAttempted() ? validationMessage(form.controls.employmentTypeCode.errors, 'Employment type') : ''"
               (valueChange)="form.controls.employmentTypeCode.setValue($event)"
             />
             <app-select [vacancyBadges]="true"
@@ -161,6 +162,8 @@ export class EmployeeJobInfoComponent implements OnDestroy {
   );
 
   private readonly fb = new FormBuilder().nonNullable;
+  protected readonly validationMessage = validationMessage;
+
   readonly form = this.fb.group({
     employeeNumber: ['', [Validators.required, Validators.maxLength(EMPLOYEE_NUMBER_MAX_LENGTH)]],
     employmentTypeCode: ['', Validators.required],

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, HostListener, computed, effect, input, output, signal, untracked } from '@angular/core';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 import { CREATE_TAB_LABELS, CREATE_TAB_ORDER, CreateSlot, CreateTab, SharedCreateDraft } from './planner-create-draft';
 
 /**
@@ -10,10 +11,11 @@ import { CREATE_TAB_LABELS, CREATE_TAB_ORDER, CreateSlot, CreateTab, SharedCreat
 @Component({
   selector: 'app-planner-create-popover',
   standalone: true,
+  imports: [StopClickPropagationDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="pcp-backdrop" data-testid="create-popover-backdrop" (click)="closed.emit()"></div>
-    <section class="pcp-panel" [class.pcp-panel--wide]="active() === 'meeting' || active() === 'workItem'" data-testid="create-popover-panel" role="dialog" aria-label="Create" (click)="$event.stopPropagation()">
+    <div role="presentation" class="pcp-backdrop" data-testid="create-popover-backdrop" (click)="closed.emit()"></div>
+    <section class="pcp-panel" [class.pcp-panel--wide]="active() === 'meeting' || active() === 'workItem'" data-testid="create-popover-panel" role="dialog" aria-label="Create" appStopClickPropagation>
       <header class="pcp-tabs">
         <div role="tablist" class="pcp-tablist">
           @for (tab of visibleTabs(); track tab) {

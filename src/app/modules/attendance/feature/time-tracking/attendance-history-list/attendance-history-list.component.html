@@ -1,21 +1,9 @@
 @if (loading()) {
   <app-data-table [columns]="columns()" [rows]="[]" [trackBy]="trackByRecord" [loading]="true" loadingLabel="Loading attendance history" />
-} @else if (error()) {
-  <div class="time-tracking-message time-tracking-message--error" role="alert">
-    <p>{{ error() }}</p>
-    @if (error() !== retryDisabledMessage()) {
-      <app-button type="button" variant="secondary" size="sm" (pressed)="retryRequested.emit()">Try again</app-button>
-    }
-  </div>
+} @else if (error(); as message) {
+  <app-attendance-error-banner [message]="message" [canRetry]="error() !== retryDisabledMessage()" (retryRequested)="retryRequested.emit()" />
 } @else if (rows().length === 0) {
-  <div class="empty-state-box">
-    <div class="empty-state-icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    </div>
-    <p class="empty-copy">{{ emptyMessage() }}</p>
-  </div>
+  <app-attendance-empty-state [iconPaths]="emptyIconPaths" [message]="emptyMessage()" />
 } @else {
   <app-data-table [columns]="columns()" [rows]="rows()" [trackBy]="trackByRecord" caption="Attendance history" minWidth="420px" [rowClass]="rowClass" (rowClicked)="selectRow($event)">
     <ng-template appDataTableCell="employee" let-row>
@@ -42,13 +30,5 @@
       }
     </ng-template>
   </app-data-table>
-  @if (totalCount() > pageSize()) {
-    <div class="tt-pagination">
-      <span class="tt-pagination-info">Page {{ page() }} of {{ Math.ceil(totalCount() / pageSize()) }}</span>
-      <div class="tt-pagination-buttons">
-        <app-button type="button" variant="secondary" [disabled]="page() <= 1" (pressed)="pageChange.emit(page() - 1)">Previous</app-button>
-        <app-button type="button" variant="secondary" [disabled]="page() * pageSize() >= totalCount()" (pressed)="pageChange.emit(page() + 1)">Next</app-button>
-      </div>
-    </div>
-  }
+  <app-attendance-list-pager [page]="page()" [pageSize]="pageSize()" [totalCount]="totalCount()" (pageChanged)="pageChange.emit($event)" />
 }

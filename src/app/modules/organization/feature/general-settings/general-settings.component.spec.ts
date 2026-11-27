@@ -177,6 +177,22 @@ describe('GeneralSettingsComponent', () => {
     expect(fixture.componentInstance.form.pristine).toBe(true);
   });
 
+  it('shows a backend field error next to its field when the save is refused with a 400', async () => {
+    const fixture = await setupWithLoadedSettings();
+    const submitPromise = fixture.componentInstance.onSubmit();
+    httpMock
+      .expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`)
+      .flush(
+        { title: 'Validation Error', detail: 'One or more validation errors occurred.', errors: { CompanyCode: ['Company code is already used by another company.'] } },
+        { status: 400, statusText: 'Bad Request' },
+      );
+    await submitPromise;
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.form.controls.companyCode.errors).toEqual({ server: { message: 'Company code is already used by another company.' } });
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Company code is already used by another company.');
+  });
+
   it('save() PUTs to the route-scoped id with no tenantId/id/parentLegalEntityId/logoFileId in the body', async () => {
     const fixture = await setupWithLoadedSettings();
 
@@ -274,7 +290,9 @@ describe('GeneralSettingsComponent', () => {
     await submitPromise;
     fixture.detectChanges();
 
-    expect(spy).toHaveBeenCalledWith('Company name conflict.');
+    // Task 20: the field message sits next to the field; the toast points to it.
+    expect(spy).toHaveBeenCalledWith('Please check the highlighted fields.');
+    expect(fixture.componentInstance.form.controls.name.errors).toEqual({ server: { message: 'Company name conflict.' } });
     expect(fixture.componentInstance.form.controls.name.value).toBe('Renamed Co');
   });
 

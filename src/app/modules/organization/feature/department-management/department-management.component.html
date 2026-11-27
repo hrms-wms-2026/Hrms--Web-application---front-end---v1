@@ -197,6 +197,7 @@
     [availableHeadPositions]="headPositionOptions()"
     [companyName]="selectedLegalEntity()?.name || ''"
     [loading]="departmentStore.saving()"
+    [serverError]="departmentStore.actionApiError()"
     (save)="onSaveDepartment($event)"
     (cancelled)="closeFormModal()"
   />
