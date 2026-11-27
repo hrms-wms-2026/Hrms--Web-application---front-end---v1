@@ -83,4 +83,26 @@ describe('EmployeeDirectoryStore', () => {
     await store.ensureLoaded(['emp-404']);
     expect(getEmployeeIdentitySpy).toHaveBeenCalledTimes(1);
   });
+
+  it('does not cache a temporary failure, so the next ensureLoaded retries and resolves the employee', async () => {
+    const { throwError } = await import('rxjs');
+    getEmployeeIdentitySpy
+      .mockReturnValueOnce(throwError(() => ({ status: 503 })))
+      .mockReturnValueOnce(of({ id: 'emp-2', name: 'Arun Raj', avatarFileId: null }));
+
+    await store.ensureLoaded(['emp-2']);
+    expect(store.get('emp-2')).toBeUndefined();
+
+    await store.ensureLoaded(['emp-2']);
+    expect(getEmployeeIdentitySpy).toHaveBeenCalledTimes(2);
+    expect(store.get('emp-2')?.name).toBe('Arun Raj');
+  });
+
+  it('treats a network error without a status as temporary', async () => {
+    const { throwError } = await import('rxjs');
+    getEmployeeIdentitySpy.mockReturnValueOnce(throwError(() => new Error('offline')));
+
+    await store.ensureLoaded(['emp-3']);
+    expect(store.get('emp-3')).toBeUndefined();
+  });
 });

@@ -2,6 +2,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthStore } from '../../../auth/state/auth.store';
+import { LoginPageNavigator } from '../../../auth/data-access/login-page-navigator.service';
 import { TrayInstallerApiService } from '../../data-access/tray-installer-api.service';
 import { TrayInstallerInfo } from '../../models/tray-installer.model';
 import { TrayPresenceStore } from '../../state/tray-presence.store';
@@ -17,6 +18,7 @@ import { TrayPresenceStore } from '../../state/tray-presence.store';
 export class TrayActivationGateComponent implements OnInit {
   readonly presence = inject(TrayPresenceStore);
   private readonly auth = inject(AuthStore);
+  private readonly loginPage = inject(LoginPageNavigator);
   private readonly installerApi = inject(TrayInstallerApiService);
 
   readonly authEmail = computed(() => {
@@ -63,5 +65,7 @@ export class TrayActivationGateComponent implements OnInit {
 
   async logout(): Promise<void> {
     await this.auth.logout();
+    // The session is gone either way; a full page load also drops every store's cached data.
+    this.loginPage.goToLogin();
   }
 }

@@ -1,10 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClient, HttpContext, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { Router, provideRouter } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { environment } from '@environments/environment';
 import { NO_EMPLOYEE_DETAIL, SILENT_HTTP_ERRORS, errorInterceptor } from './error.interceptor';
 import { AuthStore } from '../auth/state/auth.store';
+import { LoginPageNavigator } from '../auth/data-access/login-page-navigator.service';
 import { NotificationService } from '../services/notification.service';
 import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { toApiError } from '../errors/api-error';
@@ -12,22 +13,22 @@ import { toApiError } from '../errors/api-error';
 describe('errorInterceptor', () => {
   let http: HttpClient;
   let httpMock: HttpTestingController;
-  let router: Router;
   let authStore: InstanceType<typeof AuthStore>;
+  let leaveExpiredSession: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    leaveExpiredSession = vi.fn();
     TestBed.configureTestingModule({
       providers: [
+        { provide: LoginPageNavigator, useValue: { leaveExpiredSession } },
         provideHttpClient(withInterceptors([errorInterceptor])),
         provideHttpClientTesting(),
-        // The interceptor really navigates to the login page on a 401; give it a route so that navigation
-        // resolves instead of rejecting after the test ends.
+        // LoginPageNavigator is mocked; the router stays for anything else that injects it.
         provideRouter([{ path: 'auth/login', children: [] }])
       ]
     });
     http = TestBed.inject(HttpClient);
     httpMock = TestBed.inject(HttpTestingController);
-    router = TestBed.inject(Router);
     authStore = TestBed.inject(AuthStore);
   });
 
@@ -96,20 +97,20 @@ describe('errorInterceptor', () => {
     expect(errored).toBe(true);
   });
 
-  it('clears the session and redirects to /auth/login on a 401 from a protected endpoint', () => {
+  it('clears the session and leaves for the login page on a 401 from a protected endpoint', () => {
     const clearSpy = vi.spyOn(authStore, 'clearSession');
-    const navigateSpy = vi.spyOn(router, 'navigate');
+    const navigateSpy = leaveExpiredSession;
 
     http.get('/api/v1/employees').subscribe({ error: () => {} });
     const req = httpMock.expectOne('/api/v1/employees');
     req.flush({}, { status: 401, statusText: 'Unauthorized' });
 
     expect(clearSpy).toHaveBeenCalled();
-    expect(navigateSpy).toHaveBeenCalledWith(['/auth/login']);
+    expect(navigateSpy).toHaveBeenCalledTimes(1);
   });
 
   it('does not redirect on a 401 from /auth/login (invalid credentials)', () => {
-    const navigateSpy = vi.spyOn(router, 'navigate');
+    const navigateSpy = leaveExpiredSession;
 
     http.post('/api/v1/auth/login', {}).subscribe({ error: () => {} });
     const req = httpMock.expectOne('/api/v1/auth/login');
@@ -119,7 +120,7 @@ describe('errorInterceptor', () => {
   });
 
   it('does not redirect on a 401 from /auth/me (guard handles it itself)', () => {
-    const navigateSpy = vi.spyOn(router, 'navigate');
+    const navigateSpy = leaveExpiredSession;
 
     http.get('/api/v1/auth/me').subscribe({ error: () => {} });
     const req = httpMock.expectOne('/api/v1/auth/me');
@@ -178,9 +179,9 @@ describe('errorInterceptor', () => {
     expect(notify.notifications()).toHaveLength(1);
   });
 
-  it('clears the session and redirects to /auth/login on a CSRF-shaped 403 (stale/expired session)', () => {
+  it('clears the session and leaves for the login page on a CSRF-shaped 403 (stale/expired session)', () => {
     const clearSpy = vi.spyOn(authStore, 'clearSession');
-    const navigateSpy = vi.spyOn(router, 'navigate');
+    const navigateSpy = leaveExpiredSession;
     const notify = TestBed.inject(NotificationService);
 
     http.put('/api/v1/work/projects/p1', {}).subscribe({ error: () => {} });
@@ -196,13 +197,13 @@ describe('errorInterceptor', () => {
     );
 
     expect(clearSpy).toHaveBeenCalled();
-    expect(navigateSpy).toHaveBeenCalledWith(['/auth/login']);
+    expect(navigateSpy).toHaveBeenCalledTimes(1);
     expect(notify.notifications()).toHaveLength(0);
   });
 
   it('does not treat an ordinary permission-denied 403 as a CSRF/session error', () => {
     const clearSpy = vi.spyOn(authStore, 'clearSession');
-    const navigateSpy = vi.spyOn(router, 'navigate');
+    const navigateSpy = leaveExpiredSession;
 
     http.put('/api/v1/work/projects/p1', {}).subscribe({ error: () => {} });
     const req = httpMock.expectOne('/api/v1/work/projects/p1');
@@ -260,31 +261,32 @@ describe('errorInterceptor', () => {
       httpMock.expectOne('/api/v1/employees').flush(body, { status: 403, statusText: 'Forbidden' });
     }
 
-    it('clears the slug and the session and redirects to /auth/login', () => {
+    it('clears the slug and the session and leaves for the login page', () => {
       mutableEnv.tenancyMode = 'single-host';
       const clearSpy = vi.spyOn(authStore, 'clearSession');
-      const navigateSpy = vi.spyOn(router, 'navigate');
+      const navigateSpy = leaveExpiredSession;
       const notify = TestBed.inject(NotificationService);
 
       fail403(MISMATCH);
 
       expect(sessionStorage.getItem('crownus.singleHostTenant')).toBeNull();
       expect(clearSpy).toHaveBeenCalled();
-      expect(navigateSpy).toHaveBeenCalledWith(['/auth/login']);
+      expect(navigateSpy).toHaveBeenCalledTimes(1);
       expect(notify.notifications()).toHaveLength(0);
     });
 
     it('does not loop: with the slug cleared a repeat 403 is only an ordinary error', () => {
       mutableEnv.tenancyMode = 'single-host';
       fail403(MISMATCH);
-      const navigateSpy = vi.spyOn(router, 'navigate');
+      leaveExpiredSession.mockClear();
+      const navigateSpy = leaveExpiredSession;
       fail403({ status: 403, detail: 'Caller is not the project lead.' });
       expect(navigateSpy).not.toHaveBeenCalled();
     });
 
     it('subdomain mode keeps the old behaviour for the same 403', () => {
       mutableEnv.tenancyMode = 'subdomain';
-      const navigateSpy = vi.spyOn(router, 'navigate');
+      const navigateSpy = leaveExpiredSession;
 
       fail403(MISMATCH);
 
@@ -294,7 +296,7 @@ describe('errorInterceptor', () => {
 
     it('an ordinary 403 in single-host mode keeps the old behaviour', () => {
       mutableEnv.tenancyMode = 'single-host';
-      const navigateSpy = vi.spyOn(router, 'navigate');
+      const navigateSpy = leaveExpiredSession;
 
       fail403({ status: 403, detail: 'Caller is not the project lead.' });
 

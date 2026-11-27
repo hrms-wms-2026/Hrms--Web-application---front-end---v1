@@ -44,15 +44,32 @@ describe('MyTeamCapabilitiesStore', () => {
     expect(store.error()).toBeNull();
   });
 
-  it('loadCapabilities sets error and still marks loaded on failure', async () => {
+  it('loadCapabilities sets error and does not mark a failed load as loaded', async () => {
     const { store } = setup({
       getCapabilities: vi.fn().mockReturnValue(throwError(() => ({ error: { detail: 'boom' } })))
     });
     await store.loadCapabilities();
     expect(store.capabilities()).toBeNull();
     expect(store.error()).toBe('boom');
-    expect(store.loaded()).toBe(true);
+    expect(store.loaded()).toBe(false);
     expect(store.loading()).toBe(false);
+  });
+
+  it('ensureLoaded retries after a failed load instead of caching the failure', async () => {
+    const getCapabilities = vi
+      .fn()
+      .mockReturnValueOnce(throwError(() => ({ error: { detail: 'boom' } })))
+      .mockReturnValueOnce(of(sampleResponse));
+    const { store } = setup({ getCapabilities });
+
+    await store.ensureLoaded();
+    expect(store.capabilities()).toBeNull();
+
+    await store.ensureLoaded();
+    expect(getCapabilities).toHaveBeenCalledTimes(2);
+    expect(store.capabilities()).toEqual(sampleResponse);
+    expect(store.loaded()).toBe(true);
+    expect(store.error()).toBeNull();
   });
 
   it('ensureLoaded fetches only once even when called repeatedly', async () => {
