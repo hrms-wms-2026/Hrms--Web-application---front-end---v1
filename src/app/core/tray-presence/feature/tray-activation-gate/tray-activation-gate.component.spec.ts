@@ -3,6 +3,7 @@ import { signal } from '@angular/core';
 import { NEVER, of, throwError } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthStore } from '../../../auth/state/auth.store';
+import { LoginPageNavigator } from '../../../auth/data-access/login-page-navigator.service';
 import { TrayInstallerApiService } from '../../data-access/tray-installer-api.service';
 import { TrayInstallerInfo } from '../../models/tray-installer.model';
 import { TrayPresenceStore } from '../../state/tray-presence.store';
@@ -23,6 +24,8 @@ describe('TrayActivationGateComponent installer step', () => {
   const getLatest = vi.fn();
 
   const generateCode = vi.fn();
+  const logout = vi.fn().mockResolvedValue(true);
+  const goToLogin = vi.fn();
 
   async function render(
     settle = true,
@@ -44,7 +47,8 @@ describe('TrayActivationGateComponent installer step', () => {
       imports: [TrayActivationGateComponent],
       providers: [
         { provide: TrayPresenceStore, useValue: presence },
-        { provide: AuthStore, useValue: { logout: vi.fn() } },
+        { provide: AuthStore, useValue: { logout } },
+        { provide: LoginPageNavigator, useValue: { goToLogin } },
         { provide: TrayInstallerApiService, useValue: { getLatest } }
       ]
     }).compileComponents();
@@ -121,5 +125,18 @@ describe('TrayActivationGateComponent installer step', () => {
     const link: HTMLAnchorElement = fixture.nativeElement.querySelector('a.download');
     expect(link.getAttribute('target')).toBe('_blank');
     expect(link.getAttribute('rel')).toContain('noopener');
+  });
+
+  it('logs out and then loads the login page fresh, so no store keeps the cached data', async () => {
+    getLatest.mockReturnValue(of(installer));
+    logout.mockClear();
+    goToLogin.mockClear();
+    const fixture = await render();
+
+    await fixture.componentInstance.logout();
+
+    expect(logout).toHaveBeenCalledTimes(1);
+    expect(goToLogin).toHaveBeenCalledTimes(1);
+    expect(logout.mock.invocationCallOrder[0]).toBeLessThan(goToLogin.mock.invocationCallOrder[0]!);
   });
 });

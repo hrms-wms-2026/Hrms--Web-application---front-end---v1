@@ -38,7 +38,9 @@ export const MyTeamCapabilitiesStore = signalStore(
         patchState(store, {
           error: extractError(err, 'Failed to load My Team capabilities.'),
           loading: false,
-          loaded: true
+          // Not loaded: a failed fetch must not be cached, or ensureLoaded() would never retry it and
+          // the widgets would stay without capabilities until a page refresh.
+          loaded: false
         });
       }
     }

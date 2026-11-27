@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, signal } from '@angular/core';
-import { Router } from '@angular/router';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { LoginPageNavigator } from '../../../../core/auth/data-access/login-page-navigator.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
@@ -20,7 +20,7 @@ import { PROFILE_SUB_TABS, ProfileSubTabId, isProfileSubTabId } from '@modules/p
 })
 export class ProfileMenuComponent {
   private readonly authStore = inject(AuthStore);
-  private readonly router = inject(Router);
+  private readonly loginPage = inject(LoginPageNavigator);
   private readonly notificationService = inject(NotificationService);
 
   readonly avatarUrl = input<string | null | undefined>(undefined);
@@ -148,7 +148,8 @@ export class ProfileMenuComponent {
     this.close();
     const success = await this.authStore.logout();
     if (success) {
-      await this.router.navigate(['/auth/login']);
+      // A full page load, so no store keeps this user's cached data for the next sign-in.
+      this.loginPage.goToLogin();
     } else {
       this.notificationService.error('Could not log out. Try again.');
     }

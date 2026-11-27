@@ -1,11 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { signal } from '@angular/core';
-import { Router } from '@angular/router';
 import { ProfileMenuComponent } from './profile-menu.component';
 import { ThemeStore } from '../../../../core/theme/state/theme.store';
 import { THEME_PRESETS, ThemePresetId } from '../../../../core/theme/models/theme-preset.model';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { LoginPageNavigator } from '../../../../core/auth/data-access/login-page-navigator.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ProfileStore } from '@modules/profile/state/profile.store';
 
@@ -14,7 +14,7 @@ async function setup(overrides: { logoutResult?: boolean } = {}) {
   const setPreset = vi.fn((preset: ThemePresetId) => presetSignal.set(preset));
 
   const logoutMock = vi.fn().mockResolvedValue(overrides.logoutResult ?? true);
-  const navigateMock = vi.fn().mockResolvedValue(true);
+  const navigateMock = vi.fn();
   const notificationErrorMock = vi.fn();
 
   await TestBed.configureTestingModule({
@@ -22,7 +22,7 @@ async function setup(overrides: { logoutResult?: boolean } = {}) {
     providers: [
       { provide: ThemeStore, useValue: { preset: presetSignal, setPreset, mode: signal('light'), resolvedMode: signal('light'), setMode: vi.fn() } },
       { provide: AuthStore, useValue: { logout: logoutMock } },
-      { provide: Router, useValue: { navigate: navigateMock } },
+      { provide: LoginPageNavigator, useValue: { goToLogin: navigateMock } },
       { provide: NotificationService, useValue: { error: notificationErrorMock } },
       {
         provide: ProfileStore,
@@ -201,7 +201,7 @@ describe('ProfileMenuComponent', () => {
     expect(setPreset).toHaveBeenCalledWith('emerald');
   });
 
-  it('calls AuthStore.logout and navigates to /auth/login on successful logout', async () => {
+  it('calls AuthStore.logout and loads the login page fresh on successful logout', async () => {
     const { fixture, logoutMock, navigateMock, notificationErrorMock } = await setup({ logoutResult: true });
 
     fixture.debugElement.query(By.css('.profile-menu-trigger')).nativeElement.click();
@@ -218,7 +218,7 @@ describe('ProfileMenuComponent', () => {
 
     await fixture.whenStable();
 
-    expect(navigateMock).toHaveBeenCalledWith(['/auth/login']);
+    expect(navigateMock).toHaveBeenCalledTimes(1);
     expect(notificationErrorMock).not.toHaveBeenCalled();
   });
 
