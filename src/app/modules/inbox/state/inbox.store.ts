@@ -218,9 +218,14 @@ export const InboxStore = signalStore(
     const subscription = new Subscription();
     return {
       onInit(): void {
-        // The rail badge needs counts as soon as the workspace is usable, before the Inbox is opened.
+        // The rail badge needs counts as soon as the workspace is usable, before the Inbox is opened. Readiness
+        // reads several signals (session, modules, tray), so the effect re-runs while it stays true - only the
+        // step to ready loads, and it joins a request a screen has already started.
+        let wasReady = false;
         effect(() => {
-          if (tenantWorkspaceReady(auth, permissions, tray)) untracked(() => void store.loadCounts());
+          const ready = tenantWorkspaceReady(auth, permissions, tray);
+          if (ready && !wasReady) untracked(() => void store.ensureCounts());
+          wasReady = ready;
         });
         subscription.add(merge(realtime.inboxChanged$.pipe(map(() => undefined)), realtime.reconnected$)
           .pipe(debounceTime(REALTIME_DEBOUNCE_MS))
