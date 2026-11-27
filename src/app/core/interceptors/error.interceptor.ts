@@ -1,10 +1,10 @@
 import { CSRF_ERROR_TYPE } from '../auth/auth-cookie-names';
 import { HttpContextToken, HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { Router } from '@angular/router';
 import { catchError, retry, throwError, timer } from 'rxjs';
 import { clearSingleHostTenant, isSingleHostMode } from '../auth/utils/single-host-tenant';
 import { AuthStore } from '../auth/state/auth.store';
+import { LoginPageNavigator } from '../auth/data-access/login-page-navigator.service';
 import { ErrorHandlerService } from '../services/error-handler.service';
 import { rememberCorrelationId } from '../errors/api-error';
 import { TrayPresenceRequiredEvents } from '../tray-presence/state/tray-presence-required.events';
@@ -59,7 +59,7 @@ function isTenantMismatchError(error: HttpErrorResponse): boolean {
 }
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
-  const router = inject(Router);
+  const loginPage = inject(LoginPageNavigator);
   const authStore = inject(AuthStore);
   const errorHandler = inject(ErrorHandlerService);
   const trayPresenceEvents = inject(TrayPresenceRequiredEvents);
@@ -95,7 +95,8 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
       if (error.status === 401) {
         authStore.clearSession();
-        router.navigate(['/auth/login']);
+        // A full page load from an app page, so no store keeps this session's cached data.
+        loginPage.leaveExpiredSession();
         return throwError(() => error);
       }
 
@@ -103,7 +104,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         // No stored slug means no tenant header on the login page, so this cannot re-trigger.
         clearSingleHostTenant();
         authStore.clearSession();
-        router.navigate(['/auth/login']);
+        loginPage.leaveExpiredSession();
         return throwError(() => error);
       }
 
