@@ -52,6 +52,16 @@
   <app-draft-modal-host />
   <app-owner-setup-guide />
   <app-unsaved-changes-dialog />
+
+  @if (quickSearch.isOpen()) {
+    <app-quick-search-dialog />
+  }
+  @if (quickSearch.leaveRequestOpen()) {
+    <!-- Loaded only when Quick Search's "Request time off" is picked. -->
+    @defer (on immediate) {
+      <app-new-leave-request-host (closed)="quickSearch.leaveRequestOpen.set(false)" />
+    }
+  }
 </div>
 
 <div
