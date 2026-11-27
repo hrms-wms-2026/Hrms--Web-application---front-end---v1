@@ -11,7 +11,8 @@
       <app-personal-info-form
         [personalInformation]="profile.personalInformation"
         [saving]="store.saving()"
-        [saveError]="store.saveError()"
+        [saveError]="personalSaveBanner()"
+        [serverError]="serverErrorFor('personal')"
         (save)="onSavePersonalInformation($event)"
         (avatarSelected)="onAvatarSelected($event)"
         (avatarRemoved)="store.removeAvatar()"
@@ -24,6 +25,7 @@
         <app-emergency-contacts-panel
           #contactsPanel
           [contacts]="profile.emergencyContacts"
+          [serverError]="serverErrorFor('emergencyContact')"
           [saving]="store.saving()"
           (add)="onAddEmergencyContact($event)"
           (remove)="onRemoveEmergencyContact($event)"
@@ -34,6 +36,7 @@
         <app-dependents-panel
           #dependentsPanel
           [dependents]="profile.dependents"
+          [serverError]="serverErrorFor('dependent')"
           [saving]="store.saving()"
           (add)="onAddDependent($event)"
           (remove)="onRemoveDependent($event)"
@@ -69,7 +72,7 @@
       }
     }
     @if (activeSubTab() === 'payroll') {
-      <app-payroll-panel [payroll]="profile.payroll" [saving]="store.saving()" (save)="onSavePayroll($event)" />
+      <app-payroll-panel [payroll]="profile.payroll" [saving]="store.saving()" [serverError]="serverErrorFor('payroll')" (save)="onSavePayroll($event)" />
     }
     @if (activeSubTab() === 'security') {
       <app-security-panel

@@ -1,10 +1,11 @@
 import { Component, inject, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { ThemeStore } from './core/theme/state/theme.store';
+import { OfflineBannerComponent } from './shared/ui/offline-banner/offline-banner.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, OfflineBannerComponent],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })

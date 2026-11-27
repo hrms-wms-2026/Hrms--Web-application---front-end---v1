@@ -122,6 +122,7 @@
   <app-create-company-modal
     [availableParents]="store.companies()"
     [saving]="store.saving()"
+    [serverError]="store.createApiError()"
     (save)="onCreateCompany($event)"
     (cancelled)="closeCreateModal()"
   />

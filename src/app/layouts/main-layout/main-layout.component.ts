@@ -30,6 +30,9 @@ import { DraftsBarComponent } from './drafts-bar/drafts-bar.component';
 import { DraftModalHostComponent } from './draft-modal-host/draft-modal-host.component';
 import { AnnouncementBannerComponent } from './announcement-banner/announcement-banner.component';
 import { OwnerSetupGuideComponent } from './owner-setup-guide/owner-setup-guide.component';
+import { QuickSearchDialogComponent } from './quick-search/quick-search-dialog.component';
+import { QuickSearchService } from './quick-search/quick-search.service';
+import { NewLeaveRequestHostComponent } from '@modules/leave/ui/new-leave-request-host/new-leave-request-host.component';
 
 @Component({
   selector: 'app-main-layout',
@@ -50,6 +53,8 @@ import { OwnerSetupGuideComponent } from './owner-setup-guide/owner-setup-guide.
     LockedWorkspacePreviewComponent,
     AnnouncementBannerComponent,
     OwnerSetupGuideComponent,
+    QuickSearchDialogComponent,
+    NewLeaveRequestHostComponent,
   ],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css',
@@ -63,6 +68,7 @@ export class MainLayoutComponent {
   readonly trayPresence = inject(TrayPresenceStore);
 
   readonly navState = inject(NavigationStateService);
+  readonly quickSearch = inject(QuickSearchService);
   private readonly plannerAvailability = inject(PlannerAvailabilityService);
 
   readonly email = this.authStore.email;
@@ -92,6 +98,12 @@ export class MainLayoutComponent {
 
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
+    // Ctrl/Cmd+K opens Quick Search from anywhere, even while typing in a field (and closes it again).
+    if (!event.defaultPrevented && (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'k') {
+      event.preventDefault();
+      this.quickSearch.toggle();
+      return;
+    }
     if ((event.ctrlKey || event.metaKey) && event.key === '\\') {
       if (this.navState.hasSubSidebar()) {
         event.preventDefault();

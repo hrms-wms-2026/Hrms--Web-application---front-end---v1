@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription } from 'rxjs';
@@ -40,6 +40,7 @@ import { ProjectHoursChartComponent } from '../../ui/project-hours-chart/project
 import { orderProjectsForChart } from '../../utils/project-hours-chart.util';
 import { TeamProgressDetailDialogComponent } from '../team-progress-detail-dialog/team-progress-detail-dialog.component';
 import { IconComponent, IconName } from '../../../../shared/ui/icon/icon.component';
+import { injectHostSize } from '../../utils/host-size.util';
 
 /** Per-viewer memory of the period switch. A convenience only: when storage is blocked the card
  * simply starts on All time. */
@@ -194,14 +195,11 @@ export class TeamProgressCardComponent implements OnInit {
   });
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly hostSize = injectHostSize();
   private readonly detailApi = inject(TeamProgressDetailApiService);
 
   private visibilityHandler = (): void => this.onVisibilityChange();
 
-  private resizeObserver: ResizeObserver | null = null;
-  private frameId: number | null = null;
-  private pendingSize: { width: number; height: number } | null = null;
 
   /** Layout for the card's current size. 'small' until the first measurement (and without ResizeObserver). */
   readonly mode = signal<TeamProgressMode>('small');
@@ -296,6 +294,12 @@ export class TeamProgressCardComponent implements OnInit {
   });
 
   constructor() {
+    // The host size feeds the layout. 0x0 = not measured yet (never measured under tests, where specs call applySize).
+    effect(() => {
+      const size = this.hostSize();
+      if (size.width === 0 && size.height === 0) return;
+      untracked(() => this.applySize(size));
+    });
     // The planned-vs-worked figures load with the card, for the switch's period (All time reads the week).
     effect(() => {
       const data = this.store.data();
@@ -685,10 +689,8 @@ export class TeamProgressCardComponent implements OnInit {
   ngOnInit(): void {
     this.feed.start();
     document.addEventListener('visibilitychange', this.visibilityHandler);
-    this.observeSize();
     this.destroyRef.onDestroy(() => {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
-      this.stopObservingSize();
     });
   }
 
@@ -726,43 +728,13 @@ export class TeamProgressCardComponent implements OnInit {
       });
   }
 
-  /** Layout follows the host's rendered size; a resize only changes signals, never the data. */
-  private observeSize(): void {
-    if (typeof ResizeObserver === 'undefined') return;
-    this.resizeObserver = new ResizeObserver((entries) => {
-      const rect = entries[entries.length - 1]?.contentRect;
-      if (!rect) return;
-      this.pendingSize = { width: rect.width, height: rect.height };
-      if (typeof requestAnimationFrame !== 'function') {
-        this.applySize();
-        return;
-      }
-      if (this.frameId !== null) return;
-      this.frameId = requestAnimationFrame(() => {
-        this.frameId = null;
-        this.applySize();
-      });
-    });
-    this.resizeObserver.observe(this.host.nativeElement);
-  }
-
-  private applySize(): void {
-    const size = this.pendingSize;
-    if (!size) return;
-    this.pendingSize = null;
+  private applySize(size: { width: number; height: number }): void {
     const mode = resolveTeamProgressMode(size.width, size.height, this.mode());
     if (mode !== this.mode()) this.mode.set(mode);
     const widthStep = Math.floor(size.width / 100) * 100;
     if (widthStep !== this.widthStep()) this.widthStep.set(widthStep);
     if (!(size.height > 0)) return;
     this.size.set({ width: size.width, height: size.height });
-  }
-
-  private stopObservingSize(): void {
-    this.resizeObserver?.disconnect();
-    this.resizeObserver = null;
-    if (this.frameId !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this.frameId);
-    this.frameId = null;
   }
 
   private onVisibilityChange(): void {
@@ -774,7 +746,6 @@ export class TeamProgressCardComponent implements OnInit {
   retry(): void {
     this.feed.reload();
   }
-
 
   /** Expand, "View all", "+N more" and a click anywhere on a loaded card open the detail dialog. */
   openDetail(event?: Event): void {
@@ -795,7 +766,6 @@ export class TeamProgressCardComponent implements OnInit {
     this.detailOpen.set(false);
     this.detailSection.set(null);
   }
-
 
   openOverdueTask(task: LedOverdueTask, event?: Event): void {
     event?.stopPropagation();

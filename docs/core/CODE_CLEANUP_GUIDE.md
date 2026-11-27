@@ -61,17 +61,14 @@ about 350 false findings instead of about 40.
 ```json
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": [
-    "scripts/**/*.{js,mjs}",
-    "playwright*.config.ts",
-    "e2e*/**/*.ts"
-  ],
+  "entry": ["scripts/**/*.{js,mjs}", "playwright*.config.ts", "e2e*/**/*.ts"],
+  "ignore": ["src/app/shared/api-types/*.generated.ts"],
   "ignoreExportsUsedInFile": true,
-  "ignoreDependencies": [
-    "@angular-eslint/builder"
-  ]
+  "ignoreDependencies": ["@angular-eslint/builder", "prettier", "emoji-picker-element-data"]
 }
 ```
+
+> `prettier` and `emoji-picker-element-data` are used (format check / `angular.json` asset), so they are ignored rather than reported.
 
 **`cleanup-tools\roslyn-cleanup.globalconfig`**: the dead-code rules. They are report-only, so they never fail a build.
 
@@ -136,7 +133,7 @@ For a file you can feed to an AI agent, add `--reporter json > ..\cleanup-tools\
 ### 3.2 Frontend: duplicates (jscpd)
 
 ```powershell
-npx --yes jscpd@5.4.2 src --format typescript,css,markup --ignore "**/node_modules/**,**/*.spec.ts,**/*.testing.ts" --min-tokens 70 --reporters json,html,silent --output ..\cleanup-tools\reports\jscpd-fe
+npx --yes jscpd@5.4.2 src --format typescript,css,markup --ignore "**/node_modules/**,**/*.spec.ts,**/*.testing.ts,**/*.generated.ts" --min-tokens 70 --reporters json,html,silent --output ..\cleanup-tools\reports\jscpd-fe
 ```
 
 It takes about 2 seconds. Open `jscpd-report.html` in a browser to see each clone side by side with both file:line ranges.

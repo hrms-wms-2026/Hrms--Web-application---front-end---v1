@@ -7,6 +7,8 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { AppValidators, fieldError } from '../../../../shared/utils/validators';
+import { POSITION_LIMITS } from '../../utils/organization-limits';
 
 export interface PositionFormSubmitValue {
   departmentId: string;
@@ -70,11 +72,13 @@ export class PositionFormModalComponent implements OnInit {
   @Output() save = new EventEmitter<PositionFormSubmitValue>();
   @Output() cancelled = new EventEmitter<void>();
 
+  protected readonly fieldError = fieldError;
+
   readonly form = this.fb.group({
     departmentId: ['', [Validators.required]],
-    name: ['', [Validators.required, Validators.maxLength(100)]],
-    code: ['', [Validators.maxLength(5), Validators.pattern(/^[A-Za-z0-9_-]{1,5}$/)]],
-    maxOccupancy: [1, [Validators.required, Validators.min(1), integerValidator]],
+    name: ['', AppValidators.name(POSITION_LIMITS.nameMax)],
+    code: ['', [AppValidators.maxLength(POSITION_LIMITS.codeMax), AppValidators.pattern(POSITION_LIMITS.codePattern, 'code')]],
+    maxOccupancy: [1, [Validators.required, Validators.min(POSITION_LIMITS.minOccupancy), integerValidator]],
     reportsToPositionId: ['' as string | null],
     selectedAccessRoleId: [''],
     accessRequiresApproval: [false]

@@ -44,8 +44,9 @@ describe('WeeklyProgressCardComponent', () => {
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
+    // Real timers first: fake timers saved the stubbed requestAnimationFrame and would put it back after the unstub.
     vi.useRealTimers();
+    vi.unstubAllGlobals();
     TestBed.resetTestingModule();
   });
 

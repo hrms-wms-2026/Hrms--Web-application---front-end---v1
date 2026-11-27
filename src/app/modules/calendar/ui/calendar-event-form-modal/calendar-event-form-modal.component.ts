@@ -25,6 +25,8 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
 import { timezoneDisplayLabel } from '../../../../shared/utils/timezone-label.util';
 import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
 import { CharCounterComponent } from '../../../../shared/ui/char-counter/char-counter.component';
+import { AppValidators } from '../../../../shared/utils/validators';
+import { CALENDAR_EVENT_LIMITS } from '../../utils/calendar-limits';
 
 /** Curated set of IANA zones for the "times entered in" picker. The organizer's own
  * tenant zone is always merged in on top of this so it can never be missing. */
@@ -232,7 +234,7 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
   readonly selectedNomineeId = signal<string | null>(null);
 
   readonly form = this.fb.group({
-    title: ['', [Validators.required, Validators.maxLength(200)]],
+    title: ['', AppValidators.name(CALENDAR_EVENT_LIMITS.titleMax)],
     description: [''],
     startDate: ['', Validators.required],
     startTime: ['09:00', Validators.required],

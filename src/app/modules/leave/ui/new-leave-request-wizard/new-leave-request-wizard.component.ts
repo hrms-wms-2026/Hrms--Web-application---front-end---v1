@@ -17,6 +17,8 @@ import { LeaveTypeResponse } from '../../models/leave-type.model';
 import { toLeaveSubmitDateTimes } from '../../utils/leave-request-datetime';
 import { formatHours as hoursLabel } from '../../utils/leave-amount';
 import { LeaveTypeIconComponent } from '../leave-type-icon/leave-type-icon.component';
+import { dateRange, validationMessage } from '../../../../shared/utils/validators';
+import { LEAVE_REQUEST_LIMITS } from '../../utils/leave-limits';
 
 /** Full Day uses the work window, Half Day one half of it on a single date, Custom Hours the times picked. */
 export type LeaveDurationMode = 'full' | 'half' | 'custom';
@@ -106,7 +108,7 @@ export class NewLeaveRequestWizardComponent implements OnChanges, OnInit {
   /** "24 h" for the over-balance warning. */
   readonly hoursLabel = hoursLabel;
 
-  readonly reasonMaxLength = 500;
+  readonly reasonMaxLength = LEAVE_REQUEST_LIMITS.reasonMax;
 
   /** Type + range + documents last sent for preview, so editing the reason doesn't re-run it. */
   private lastPreviewKey = '';
@@ -235,7 +237,8 @@ export class NewLeaveRequestWizardComponent implements OnChanges, OnInit {
     if (this.workWindowMissing()) return null;
     if (!d.startDate) return 'Choose the date your leave starts.';
     if (!d.endDate) return 'Choose the date your leave ends.';
-    if (d.endDate < d.startDate) return 'The end date must be on or after the start date.';
+    const rangeError = dateRange(d.startDate, d.endDate);
+    if (rangeError) return validationMessage(rangeError, 'Dates');
     const payload = this.toSubmitPayload();
     if (!payload) return 'Choose valid start and end times.';
     if (payload.endAt <= payload.startAt) return 'The end must be after the start.';

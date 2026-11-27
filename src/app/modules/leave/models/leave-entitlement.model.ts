@@ -1,3 +1,4 @@
+import type { ApiSchema } from '../../../shared/api-types/api-schema';
 /** Matches the Leave Entitlements backend response and mutation contracts exactly. */
 export interface LeaveEntitlementResponse {
   id: string;
@@ -20,8 +21,15 @@ export interface LeaveEntitlementResponse {
   createdAt: string;
   updatedAt: string | null;
 }
-export interface LeaveEntitlementListFilter { legalEntityId?: string; departmentId?: string; leaveTypeId?: string; search?: string; }
-export interface GenerateEntitlementsRequest { year: number; legalEntityId: string | null; }
+export interface LeaveEntitlementListFilter {
+  legalEntityId?: string;
+  departmentId?: string;
+  leaveTypeId?: string;
+  search?: string;
+}
+/** Generated from the backend contract (`npm run api:types`). */
+export type GenerateEntitlementsRequest =
+  ApiSchema<'ONEVO.Api.Contracts.Leave.Entitlements.GenerateEntitlementsRequest'>;
 export interface LeaveEntitlementGenerationLineResponse {
   employeeId: string;
   employeeNumber: string;
@@ -36,8 +44,16 @@ export interface LeaveEntitlementGenerationLineResponse {
   carryForwardExpiresOn: string | null;
   warning: string | null;
 }
-export interface LeaveEntitlementGenerationSkipResponse { employeeId: string | null; employeeName: string | null; reason: string; }
-export interface LeaveEntitlementGenerationErrorResponse { employeeId: string | null; employeeName: string | null; reason: string; }
+export interface LeaveEntitlementGenerationSkipResponse {
+  employeeId: string | null;
+  employeeName: string | null;
+  reason: string;
+}
+export interface LeaveEntitlementGenerationErrorResponse {
+  employeeId: string | null;
+  employeeName: string | null;
+  reason: string;
+}
 export interface LeaveEntitlementGenerationPreviewResponse {
   year: number;
   employeeCount: number;
@@ -68,7 +84,9 @@ export interface AdjustEntitlementRequest {
   reason: string;
   confirmNegativeRemaining: boolean;
 }
-export interface RecalculateEntitlementRequest { confirmNegativeRemaining: boolean; }
+/** Generated from the backend contract (`npm run api:types`). */
+export type RecalculateEntitlementRequest =
+  ApiSchema<'ONEVO.Api.Contracts.Leave.Entitlements.RecalculateEntitlementRequest'>;
 export interface LeaveBalanceAuditResponse {
   id: string;
   employeeId: string;
@@ -84,4 +102,10 @@ export interface LeaveBalanceAuditResponse {
   relatedRequestId: string | null;
   createdAt: string;
 }
-export interface LeaveBalanceAuditListFilter { employeeId?: string; leaveTypeId?: string; changeType?: string; fromDate?: string; toDate?: string; }
+export interface LeaveBalanceAuditListFilter {
+  employeeId?: string;
+  leaveTypeId?: string;
+  changeType?: string;
+  fromDate?: string;
+  toDate?: string;
+}

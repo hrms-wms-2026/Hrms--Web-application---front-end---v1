@@ -198,6 +198,40 @@ describe('ChecklistBuilderComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Choose who this task is for.');
   });
 
+  it('shows a refused name next to the field and toasts nothing more', async () => {
+    const errorSpy = vi.spyOn(TestBed.inject(NotificationService), 'error');
+    component.form.patchValue({ name: 'Default Onboarding Checklist', templateType: 'onboarding' });
+    component.setScopeLevel('company');
+    component.tasksArray.at(0).patchValue({ title: 'Collect signed contract', assignmentType: 'employee', dueOffsetDays: 0, isRequired: true });
+
+    const submitPromise = component.onSubmit();
+    httpMock
+      .expectOne((r) => r.method === 'POST' && r.url === `${environment.apiUrl}/people/checklist-templates`)
+      .flush({ errors: { Name: ['A checklist with this name already exists.'] } }, { status: 400, statusText: 'Bad Request' });
+    await submitPromise;
+    fixture.detectChanges();
+
+    expect(component.form.controls.name.errors?.['server']).toEqual({ message: 'A checklist with this name already exists.' });
+    expect(fixture.nativeElement.textContent).toContain('A checklist with this name already exists.');
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  it('toasts a refused task message once, because tasks have no field for it', async () => {
+    const errorSpy = vi.spyOn(TestBed.inject(NotificationService), 'error');
+    component.form.patchValue({ name: 'Default Onboarding Checklist', templateType: 'onboarding' });
+    component.setScopeLevel('company');
+    component.tasksArray.at(0).patchValue({ title: 'Collect signed contract', assignmentType: 'employee', dueOffsetDays: 0, isRequired: true });
+
+    const submitPromise = component.onSubmit();
+    httpMock
+      .expectOne((r) => r.method === 'POST' && r.url === `${environment.apiUrl}/people/checklist-templates`)
+      .flush({ errors: { 'Tasks[0].Title': ['Task title must be 200 characters or fewer.'] } }, { status: 400, statusText: 'Bad Request' });
+    await submitPromise;
+
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    expect(errorSpy).toHaveBeenCalledWith('Task title must be 200 characters or fewer.');
+  });
+
   it('"Company default" scope emits departmentId: null, positionId: null', async () => {
     const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
@@ -917,5 +951,12 @@ describe('ChecklistBuilderComponent (Edit Mode)', () => {
         ]
       })
     );
+  });
+
+  it('limits the checklist name to the backend 100 characters', () => {
+    component.form.controls.name.setValue('a'.repeat(101));
+    expect(component.form.controls.name.errors).toEqual({ maxlength: { requiredLength: 100, actualLength: 101 } });
+    component.form.controls.name.setValue('a'.repeat(100));
+    expect(component.form.controls.name.errors).toBeNull();
   });
 });

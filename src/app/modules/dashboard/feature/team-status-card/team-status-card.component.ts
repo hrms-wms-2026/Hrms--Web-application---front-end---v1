@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
+import { injectNow } from '../../../../core/clock/clock.service';
 import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { IconComponent, IconName } from '../../../../shared/ui/icon/icon.component';
@@ -35,9 +36,6 @@ import { EMPTY_PRESENCE_PLAN, PresencePlan, PresenceView, planPresenceLayout, re
 import { formatPercent } from '../../utils/team-progress-format.util';
 import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
 import { TeamStatusDetailDialogComponent } from '../team-status-detail-dialog/team-status-detail-dialog.component';
-
-/** Elapsed times tick between refreshes; the counts only change when the data reloads. */
-const TICK_MS = 30_000;
 
 interface Counter {
   readonly key: PresenceState;
@@ -91,7 +89,6 @@ export class TeamStatusCardComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly size = injectHostSize();
 
-  private tickId: ReturnType<typeof setInterval> | null = null;
   private visibilityHandler = (): void => this.onVisibilityChange();
   private lastView: PresenceView | null = null;
   private trendRequested = false;
@@ -100,7 +97,9 @@ export class TeamStatusCardComponent implements OnInit {
   protected readonly donutPx = computed(() => dashboardDonutPx(this.view()));
   protected readonly valueFontPx = donutValueFontPx;
   protected readonly colors = PRESENCE_COLORS;
-  protected readonly now = signal(new Date());
+  /** Elapsed times move with the shared minute clock; the counts only change when the data reloads. */
+  private readonly minute = injectNow('minute');
+  protected readonly now = computed(() => new Date(this.minute()));
   /** This week's working hours for the trend panel; loaded once, the first time a view has room for it. */
   protected readonly trendDays = signal<readonly TeamWorkingHoursDay[] | null>(null);
   protected readonly trendFailed = signal(false);
@@ -218,10 +217,8 @@ export class TeamStatusCardComponent implements OnInit {
   ngOnInit(): void {
     this.feed.start();
     document.addEventListener('visibilitychange', this.visibilityHandler);
-    this.tickId = setInterval(() => this.now.set(new Date()), TICK_MS);
     this.destroyRef.onDestroy(() => {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
-      if (this.tickId) clearInterval(this.tickId);
     });
   }
 

@@ -1,0 +1,22 @@
+:host {
+  display: block;
+}
+
+.tt-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.875rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.tt-pagination-info {
+  font-weight: 500;
+}
+
+.tt-pagination-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

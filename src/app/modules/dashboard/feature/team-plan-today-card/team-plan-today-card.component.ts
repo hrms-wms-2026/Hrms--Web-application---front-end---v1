@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import {
-  ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit, computed, inject, signal,
+  ChangeDetectionStrategy, Component, OnInit, computed, effect, inject, signal,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -8,6 +8,7 @@ import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-heade
 import { LOAD_BAND_COLORS, dayLoad, formatHours, loadBand } from '../../../calendar/utils/team-load';
 import { PlannerApiService } from '../../../work/planner/data-access/planner-api.service';
 import { TeamPlannerResponse } from '../../../work/planner/models/team-planner.models';
+import { injectHostSize } from '../../utils/host-size.util';
 
 interface PlanRow { id: string; name: string; initials: string; load: string; pct: number; color: string; chip: string | null; }
 
@@ -103,8 +104,7 @@ const COMPACT_ROWS = 4;
 export class TeamPlanTodayCardComponent implements OnInit {
   private readonly api = inject(PlannerApiService);
   private readonly router = inject(Router);
-  private readonly host = inject(ElementRef<HTMLElement>);
-  private readonly destroyRef = inject(DestroyRef);
+  private readonly hostSize = injectHostSize();
 
   readonly response = signal<TeamPlannerResponse | null>(null);
   readonly loading = signal(false);
@@ -131,12 +131,17 @@ export class TeamPlanTodayCardComponent implements OnInit {
   readonly shownRows = computed(() => (this.compact() ? this.rows().slice(0, COMPACT_ROWS) : this.rows()));
   readonly hiddenCount = computed(() => this.rows().length - this.shownRows().length);
 
+  constructor() {
+    // 0x0 = not measured yet (never measured under tests, where specs set compact).
+    effect(() => {
+      const size = this.hostSize();
+      if (size.width === 0 && size.height === 0) return;
+      this.compact.set(size.height < COMPACT_HEIGHT_PX);
+    });
+  }
+
   ngOnInit(): void {
     void this.load();
-    if (typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver((entries) => this.compact.set((entries[0]?.contentRect.height ?? 0) < COMPACT_HEIGHT_PX));
-    observer.observe(this.host.nativeElement);
-    this.destroyRef.onDestroy(() => observer.disconnect());
   }
 
   async load(): Promise<void> {

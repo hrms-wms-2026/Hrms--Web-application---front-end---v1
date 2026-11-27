@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { LoggerService } from './logger.service';
+import { LOG_SINK, LoggerService } from './logger.service';
 
 describe('LoggerService', () => {
   it('forwards error() to console.error with context', () => {
@@ -20,5 +20,20 @@ describe('LoggerService', () => {
 
     expect(spy).toHaveBeenCalledWith('careful', {});
     spy.mockRestore();
+  });
+
+  it('also reports to a LOG_SINK when one is provided, and a failing sink never breaks the caller', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const report = vi.fn();
+    TestBed.configureTestingModule({ providers: [{ provide: LOG_SINK, useValue: { report } }] });
+    const service = TestBed.inject(LoggerService);
+
+    service.error('boom', { clientErrorId: 'c1' });
+    expect(report).toHaveBeenCalledWith({ level: 'error', message: 'boom', context: { clientErrorId: 'c1' } });
+
+    report.mockImplementation(() => {
+      throw new Error('sink down');
+    });
+    expect(() => service.error('again')).not.toThrow();
   });
 });

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { ClockService } from '../../../../../core/clock/clock.service';
 import { ButtonComponent } from '../../../../../shared/ui/button/button.component';
 import { AttendanceHistoryRow, DayScreenshot } from '../../../models/time-tracking.model';
 import { TimeTrackingStore } from '../../../state/time-tracking.store';
@@ -36,6 +37,7 @@ export interface AttendanceDetailSelection {
 })
 export class AttendanceDetailDrawerComponent {
   readonly store = inject(TimeTrackingStore);
+  private readonly clock = inject(ClockService);
 
   readonly selection = input<AttendanceDetailSelection | null>(null);
   readonly fallbackSummary = input<AttendanceHistoryRow | null>(null);
@@ -127,10 +129,8 @@ export class AttendanceDetailDrawerComponent {
         this.galleryExpanded.set(false);
         void this.store.loadDayDetail(selected.employeeId, selected.workDate);
       });
-      const timer = window.setInterval(() => {
-        void this.store.refreshDayDetail(selected.employeeId, selected.workDate);
-      }, 15_000);
-      onCleanup(() => window.clearInterval(timer));
+      // Every 15 s while the tab is visible, and once when it is visible again.
+      onCleanup(this.clock.poll(() => void this.store.refreshDayDetail(selected.employeeId, selected.workDate), 15_000));
     });
   }
 

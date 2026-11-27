@@ -1,24 +1,31 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { DepartmentArchiveDependencyResponse, DepartmentListItemResponse, DepartmentTreeNodeResponse } from '../../models/department.model';
-import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { ArchiveConfirmModalComponent, ArchiveImpact } from '../archive-confirm-modal/archive-confirm-modal.component';
 
 @Component({
   selector: 'app-department-archive-modal',
   host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
-  imports: [StopClickPropagationDirective, CommonModule, ButtonComponent],
+  imports: [ArchiveConfirmModalComponent],
   templateUrl: './department-archive-modal.component.html',
-  styleUrl: './department-archive-modal.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DepartmentArchiveModalComponent {
-  @Input({ required: true }) department!: DepartmentListItemResponse | DepartmentTreeNodeResponse;
-  @Input() dependency: DepartmentArchiveDependencyResponse | null = null;
-  @Input() checking = false;
-  @Input() saving = false;
+  readonly department = input.required<DepartmentListItemResponse | DepartmentTreeNodeResponse>();
+  readonly dependency = input<DepartmentArchiveDependencyResponse | null>(null);
+  readonly checking = input(false);
+  readonly saving = input(false);
 
-  @Output() confirmArchive = new EventEmitter<void>();
-  @Output() cancelled = new EventEmitter<void>();
+  readonly confirmArchive = output<void>();
+  readonly cancelled = output<void>();
+
+  protected readonly impacts = computed<readonly ArchiveImpact[] | null>(() => {
+    const blockers = this.dependency()?.blockers;
+    if (!blockers) return null;
+    return [
+      { label: 'Child departments', count: blockers.activeChildCount },
+      { label: 'Active employees', count: blockers.activeEmployeeCount },
+      { label: 'Positions', count: blockers.activePositionCount }
+    ];
+  });
 }

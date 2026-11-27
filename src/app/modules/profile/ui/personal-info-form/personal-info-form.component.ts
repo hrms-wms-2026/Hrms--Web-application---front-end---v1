@@ -1,7 +1,6 @@
-import { ChangeDetectionStrategy, Component, OnChanges, computed, inject, input, output, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, OnChanges, SimpleChanges, computed, inject, input, output, signal } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { PersonalInformation, UpdatePersonalInformationRequest } from '../../models/profile.model';
-import { ProfileValidators } from '../../utils/profile-validators';
 import { FileApiService } from '../../../../shared/data-access/file-api.service';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
@@ -10,6 +9,9 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { TIMEZONE_OPTIONS } from '../../../organization/utils/general-settings-options';
 import { ChangePhotoDialogComponent, PHOTO_ACCEPT } from '../../../../shared/ui/change-photo-dialog/change-photo-dialog.component';
+import { AppValidators, applyServerFieldErrors, fieldError, validationMessage } from '../../../../shared/utils/validators';
+import { PERSONAL_INFO_LIMITS } from '../../utils/profile-limits';
+import { ApiError } from '../../../../core/errors/api-error';
 
 @Component({
   selector: 'app-personal-info-form',
@@ -23,6 +25,10 @@ export class PersonalInfoFormComponent implements OnChanges {
   readonly personalInformation = input.required<PersonalInformation>();
   readonly saving = input(false);
   readonly saveError = input<string | null>(null);
+  /** This form's own failed save, from the profile tab (task 20). */
+  readonly serverError = input<ApiError | null>(null);
+  /** A message from that save with no field on this form. */
+  protected readonly serverFormError = signal<string | null>(null);
   readonly save = output<UpdatePersonalInformationRequest>();
   readonly avatarSelected = output<File>();
   readonly avatarRemoved = output<void>();
@@ -49,11 +55,18 @@ export class PersonalInfoFormComponent implements OnChanges {
   readonly timezoneOptions = TIMEZONE_OPTIONS;
 
   private readonly fb = new FormBuilder().nonNullable;
+  protected readonly fieldError = fieldError;
+  protected readonly validationMessage = validationMessage;
 
   form = this.buildForm(null);
 
-  ngOnChanges(): void {
-    this.form = this.buildForm(this.personalInformation());
+  ngOnChanges(changes: SimpleChanges): void {
+    // Rebuild only for new data: rebuilding on any input change (saving, saveError) would wipe server errors.
+    if (changes['personalInformation']) this.form = this.buildForm(this.personalInformation());
+    if (changes['personalInformation'] || changes['serverError']) {
+      const error = this.serverError();
+      this.serverFormError.set(error ? applyServerFieldErrors(this.form, error, ['firstName', 'lastName', 'phone']) : null);
+    }
   }
 
   displayName(): string {
@@ -64,9 +77,9 @@ export class PersonalInfoFormComponent implements OnChanges {
 
   private buildForm(info: PersonalInformation | null) {
     return this.fb.group({
-      firstName: [info?.firstName ?? '', [Validators.required, Validators.maxLength(100)]],
-      lastName: [info?.lastName ?? '', [Validators.required, Validators.maxLength(100)]],
-      phone: [info?.phone ?? ''],
+      firstName: [info?.firstName ?? '', AppValidators.name(PERSONAL_INFO_LIMITS.firstNameMax)],
+      lastName: [info?.lastName ?? '', AppValidators.name(PERSONAL_INFO_LIMITS.lastNameMax)],
+      phone: [info?.phone ?? '', [AppValidators.phone(), AppValidators.maxLength(PERSONAL_INFO_LIMITS.phoneMax)]],
       dateOfBirth: [info?.dateOfBirth ?? ''],
       gender: [info?.gender ?? ''],
       displayTimezone: [this.effectiveDisplayTimezone(info)]
@@ -91,7 +104,7 @@ export class PersonalInfoFormComponent implements OnChanges {
   }
 
   onSubmit(): void {
-    if (this.form.invalid || !this.isPhoneValid()) {
+    if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
@@ -149,8 +162,4 @@ export class PersonalInfoFormComponent implements OnChanges {
     this.pickedPhoto.set(null);
   }
 
-  isPhoneValid(): boolean {
-    const phone = this.form.value.phone;
-    return !phone || ProfileValidators.isValidPhone(phone);
-  }
 }

@@ -12,6 +12,7 @@ import { RoleFormModalComponent, RoleFormSubmitValue } from '../../ui/role-form-
 import { RoleArchiveModalComponent } from '../../ui/role-archive-modal/role-archive-modal.component';
 
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
+import { failedSaveToast } from '../../../../shared/utils/validators';
 
 @Component({
   selector: 'app-roles-management',
@@ -76,6 +77,7 @@ export class RolesManagementComponent {
   }
 
   openCreateModal(): void {
+    this.roleStore.clearSaveError();
     if (!this.hasManageAccess()) {
       this.notificationService.error("You don't have permission to create roles.");
       return;
@@ -86,12 +88,14 @@ export class RolesManagementComponent {
 
   /** Row click / action icon: edit a custom role, or view a system role read-only. */
   async openRoleModal(role: RoleSummaryResponse): Promise<void> {
+    this.roleStore.clearSaveError();
     this.editingRole.set(role);
     this.formModalOpen.set(true);
     await this.roleStore.loadRoleDetail(role.id);
   }
 
   closeFormModal(): void {
+    this.roleStore.clearSaveError();
     this.formModalOpen.set(false);
     this.editingRole.set(null);
   }
@@ -130,7 +134,8 @@ export class RolesManagementComponent {
     if (success) {
       this.closeFormModal();
     } else {
-      this.notificationService.error(this.roleStore.actionError() ?? 'Failed to save role.');
+      const toast = failedSaveToast(this.roleStore.actionApiError(), 'Failed to save role.');
+      if (toast) this.notificationService.error(toast);
     }
   }
 

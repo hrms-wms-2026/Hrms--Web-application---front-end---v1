@@ -72,7 +72,7 @@
           />
         </div>
         @if (form.controls.email.touched && form.controls.email.invalid) {
-          <p class="login-error-text">Enter a valid email address.</p>
+          <p class="login-error-text">{{ fieldError(form.controls.email, 'Email') }}</p>
         }
       </div>
 
@@ -134,7 +134,7 @@
           </span>
         </div>
         @if (form.controls.password.touched && form.controls.password.invalid) {
-          <p class="login-error-text">Password is required.</p>
+          <p class="login-error-text">{{ fieldError(form.controls.password, 'Password') }}</p>
         }
       </div>
 

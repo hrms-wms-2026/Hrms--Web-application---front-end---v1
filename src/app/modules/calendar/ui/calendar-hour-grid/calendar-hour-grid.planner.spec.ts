@@ -312,6 +312,7 @@ describe('CalendarHourGridComponent planner layer', () => {
     function renderAt(nowIso: string): void {
       vi.useFakeTimers({ toFake: ['Date'] });
       vi.setSystemTime(new Date(nowIso));
+      fixture.destroy();
       fixture = TestBed.createComponent(CalendarHourGridComponent);
       fixture.componentRef.setInput('days', [PAST, TODAY]);
       fixture.componentRef.setInput('timezone', 'UTC');

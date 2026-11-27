@@ -36,7 +36,7 @@
             [value]="form.controls.name.value || ''"
             (valueChange)="form.controls.name.setValue($event)"
             (blurred)="form.controls.name.markAsTouched()"
-            [error]="form.controls.name.touched && form.controls.name.invalid ? 'Position name is required (max 100 characters).' : ''"
+            [error]="fieldError(form.controls.name, 'Position name')"
           />
 
           <app-input
@@ -45,7 +45,7 @@
             (valueChange)="form.controls.code.setValue($event)"
             (blurred)="form.controls.code.markAsTouched()"
             [maxlength]="5"
-            [error]="form.controls.code.touched && form.controls.code.invalid ? (form.controls.code.errors?.['pattern'] ? 'Code may only contain letters, numbers, hyphens, and underscores.' : 'Code cannot exceed 5 characters.') : ''"
+            [error]="fieldError(form.controls.code, 'Code')"
           />
 
           <app-select
@@ -54,7 +54,7 @@
             [value]="form.controls.departmentId.value || ''"
             (valueChange)="form.controls.departmentId.setValue($event)"
             (blurred)="form.controls.departmentId.markAsTouched()"
-            [error]="form.controls.departmentId.touched && form.controls.departmentId.invalid ? 'Department selection is required.' : ''"
+            [error]="fieldError(form.controls.departmentId, 'Department')"
           />
 
           @if (templatePreset?.suggestedDepartmentName && !form.controls.departmentId.value) {
@@ -79,7 +79,7 @@
             [value]="form.controls.maxOccupancy.value?.toString() || '1'"
             (valueChange)="form.controls.maxOccupancy.setValue(+$event)"
             (blurred)="form.controls.maxOccupancy.markAsTouched()"
-            [error]="form.controls.maxOccupancy.touched && form.controls.maxOccupancy.invalid ? (form.controls.maxOccupancy.errors?.['integer'] ? 'Capacity must be an integer.' : 'Capacity must be at least 1.') : ''"
+            [error]="fieldError(form.controls.maxOccupancy, 'Capacity')"
           />
         </div>
 

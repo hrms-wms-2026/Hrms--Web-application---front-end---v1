@@ -1,7 +1,8 @@
-import { Component, DestroyRef, inject, input, output, signal } from '@angular/core';
+import { Component, inject, input, output } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { TaskHistoryEntryDto } from '../../models/dto/task-history.dto';
+import { injectNow } from '../../../../core/clock/clock.service';
 
 @Component({
   selector: 'app-task-history-feed',
@@ -68,19 +69,10 @@ import { TaskHistoryEntryDto } from '../../models/dto/task-history.dto';
 })
 export class TaskHistoryFeedComponent {
   private readonly taskApi = inject(TaskApiService);
-  private readonly destroyRef = inject(DestroyRef);
-  private tickTimer: ReturnType<typeof setInterval> | null = null;
-  private readonly now = signal(Date.now());
+  private readonly now = injectNow('second');
 
   entries = input.required<TaskHistoryEntryDto[]>();
   reasonSaved = output<void>();
-
-  constructor() {
-    this.tickTimer = setInterval(() => this.now.set(Date.now()), 1000);
-    this.destroyRef.onDestroy(() => {
-      if (this.tickTimer !== null) clearInterval(this.tickTimer);
-    });
-  }
 
   private formatClockTime(at: string): string {
     return new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
